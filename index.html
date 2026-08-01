@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Arena Strike - a lightweight browser FPS built with Babylon.js" />
+    <title>Arena Strike</title>
+  </head>
+  <body>
+    <main id="game-shell">
+      <canvas id="game-canvas" aria-label="Arena Strike game viewport"></canvas>
+
+      <section id="status-overlay" class="status-overlay" role="status" aria-live="polite">
+        <div class="status-card">
+          <p class="eyebrow">Arena Strike</p>
+          <h1 id="status-title">Loading game</h1>
+          <p id="status-message">Preparing the Babylon.js scene...</p>
+          <div id="loading-indicator" class="loading-indicator" aria-hidden="true"></div>
+          <button id="retry-button" class="retry-button" type="button" hidden>Retry</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+
