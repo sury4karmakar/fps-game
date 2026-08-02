@@ -8,7 +8,11 @@
   </head>
   <body>
     <main id="game-shell">
-      <canvas id="game-canvas" aria-label="Arena Strike game viewport"></canvas>
+      <canvas id="game-canvas" aria-label="Arena Strike game viewport" tabindex="0"></canvas>
+
+      <p id="controls-hint">
+        Click the arena to aim | WASD move | Shift sprint | Space jump | Esc unlock mouse
+      </p>
 
       <section id="status-overlay" class="status-overlay" role="status" aria-live="polite">
         <div class="status-card">
@@ -24,4 +28,3 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-

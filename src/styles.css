@@ -36,6 +36,31 @@ body {
   touch-action: none;
 }
 
+#controls-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 1;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 9px 13px;
+  transform: translateX(-50%);
+  border: 1px solid rgb(177 210 235 / 20%);
+  border-radius: 999px;
+  color: #d8e6f2;
+  background: rgb(5 11 18 / 62%);
+  font-size: 0.78rem;
+  line-height: 1.25;
+  pointer-events: none;
+  text-align: center;
+  transition: opacity 160ms ease;
+}
+
+#game-canvas[data-pointer-locked="true"] ~ #controls-hint {
+  opacity: 0.28;
+}
+
 .status-overlay {
   position: absolute;
   inset: 0;
@@ -137,4 +162,3 @@ h1 {
     transition: none;
   }
 }
-

@@ -29,7 +29,24 @@ function setStatus(state: StatusState, title: string, message: string): void {
 }
 
 function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : "An unexpected error occurred.";
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return "An unexpected error occurred.";
 }
 
 async function launchGame(): Promise<void> {

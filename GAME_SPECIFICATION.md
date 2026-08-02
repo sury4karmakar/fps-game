@@ -85,12 +85,13 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 3. Player Controller
 
-- [ ] Add pointer-lock mouse controls.
-- [ ] Add WASD movement and mouse look.
-- [ ] Add sprinting and jumping.
-- [ ] Add gravity and world collision.
-- [ ] Tune movement speed, jump height, and camera feel.
+- [x] Add pointer-lock mouse controls.
+- [x] Add WASD movement and mouse look.
+- [x] Add sprinting and jumping.
+- [x] Add gravity and world collision.
+- [x] Tune movement speed, jump height, and camera feel.
 
+Note: Bug: wlaking with jump not wokring
 ### 4. Weapon System
 
 - [ ] Add a placeholder first-person rifle.
