@@ -77,11 +77,11 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 2. Arena
 
-- [ ] Create the arena floor and boundary walls.
-- [ ] Add cover objects, crates, and ramps.
-- [ ] Add lighting, shadows, and a basic sky/environment.
-- [ ] Configure collision meshes.
-- [ ] Add safe player and bot spawn points.
+- [x] Create the arena floor and boundary walls.
+- [x] Add cover objects, crates, and ramps.
+- [x] Add lighting, shadows, and a basic sky/environment.
+- [x] Configure collision meshes.
+- [x] Add safe player and bot spawn points.
 
 ### 3. Player Controller
 
