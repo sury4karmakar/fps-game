@@ -28,6 +28,7 @@ interface BoxSpec {
   readonly rotationX?: number;
   readonly rotationY?: number;
   readonly castsShadow?: boolean;
+  readonly walkable?: boolean;
 }
 
 function createMaterial(
@@ -42,12 +43,17 @@ function createMaterial(
   return material;
 }
 
-function markAsCollidable(mesh: Mesh, collidableMeshes: AbstractMesh[]): void {
+function markAsCollidable(
+  mesh: Mesh,
+  collidableMeshes: AbstractMesh[],
+  walkable: boolean,
+): void {
   mesh.checkCollisions = true;
   mesh.isPickable = true;
   mesh.metadata = {
     ...(mesh.metadata as Record<string, unknown> | null),
     arenaCollision: true,
+    walkableSurface: walkable,
   };
   collidableMeshes.push(mesh);
 }
@@ -64,7 +70,7 @@ function createArenaBox(
   mesh.rotation.y = spec.rotationY ?? 0;
   mesh.material = spec.material;
   mesh.receiveShadows = true;
-  markAsCollidable(mesh, collidableMeshes);
+  markAsCollidable(mesh, collidableMeshes, spec.walkable ?? false);
 
   if (spec.castsShadow ?? true) {
     shadowGenerator.addShadowCaster(mesh);
@@ -141,6 +147,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
     position: new Vector3(0, -0.2, 0),
     material: floorMaterial,
     castsShadow: false,
+    walkable: true,
   });
 
   const halfWidth = ARENA_WIDTH / 2;
@@ -261,12 +268,14 @@ export function createArena(scene: Scene): ArenaBuildResult {
       size: { width: 7, height: platformHeight, depth: 3.8 },
       position: new Vector3(-3.5, platformHeight / 2, 9.5),
       material: rampMaterial,
+      walkable: true,
     },
     {
       name: "south-platform",
       size: { width: 7, height: platformHeight, depth: 3.8 },
       position: new Vector3(3.5, platformHeight / 2, -9.5),
       material: rampMaterial,
+      walkable: true,
     },
   ];
 
@@ -283,6 +292,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
       position: new Vector3(-3.5, platformHeight / 2, 6.2),
       rotationX: -rampAngle,
       material: rampMaterial,
+      walkable: true,
     },
     {
       name: "south-ramp",
@@ -290,6 +300,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
       position: new Vector3(3.5, platformHeight / 2, -6.2),
       rotationX: rampAngle,
       material: rampMaterial,
+      walkable: true,
     },
   ];
 

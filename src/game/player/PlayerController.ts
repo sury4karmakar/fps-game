@@ -29,7 +29,7 @@ export class PlayerController {
     new Vector3(0, -1, 0),
     GROUND_CHECK_DISTANCE,
   );
-  private readonly beforeRenderObserver: Observer<Scene>;
+  private readonly movementObserver: Observer<Scene>;
   private isSprinting = false;
   private isGrounded = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
@@ -49,7 +49,7 @@ export class PlayerController {
     this.camera.setTarget(spawnPoint.facingTarget);
     this.configureCamera();
 
-    this.beforeRenderObserver = scene.onBeforeRenderObservable.add(() => {
+    this.movementObserver = scene.onAfterAnimationsObservable.add(() => {
       this.camera.speed = this.isSprinting ? SPRINT_SPEED : WALK_SPEED;
       this.updateVerticalMotion();
     });
@@ -62,7 +62,7 @@ export class PlayerController {
   }
 
   public dispose(): void {
-    this.scene.onBeforeRenderObservable.remove(this.beforeRenderObserver);
+    this.scene.onAfterAnimationsObservable.remove(this.movementObserver);
     this.camera.detachControl();
     this.canvas.removeEventListener("click", this.requestPointerLock);
     document.removeEventListener("pointerlockchange", this.handlePointerLockChange);
@@ -93,8 +93,8 @@ export class PlayerController {
     this.camera.checkCollisions = true;
     this.camera.applyGravity = false;
     this.camera.needMoveForGravity = false;
-    this.camera.ellipsoid = new Vector3(0.42, 0.85, 0.42);
-    this.camera.ellipsoidOffset = new Vector3(0, -0.85, 0);
+    this.camera.ellipsoid = new Vector3(0.38, 0.85, 0.38);
+    this.camera.ellipsoidOffset = Vector3.Zero();
   }
 
   private readonly requestPointerLock = (): void => {
@@ -200,7 +200,12 @@ export class PlayerController {
 
     const hit = this.scene.pickWithRay(
       this.groundRay,
-      (mesh) => this.collidableMeshes.includes(mesh),
+      (mesh) => {
+        const metadata = mesh.metadata as { walkableSurface?: boolean } | null;
+        return (
+          this.collidableMeshes.includes(mesh) && metadata?.walkableSurface === true
+        );
+      },
       false,
     );
 
