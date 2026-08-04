@@ -91,7 +91,6 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 - [x] Add gravity and world collision.
 - [x] Tune movement speed, jump height, and camera feel.
 
-Note: Bug: wlaking with jump not wokring
 ### 4. Weapon System
 
 - [ ] Add a placeholder first-person rifle.

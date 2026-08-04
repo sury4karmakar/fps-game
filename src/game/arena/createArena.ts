@@ -207,18 +207,21 @@ export function createArena(scene: Scene): ArenaBuildResult {
       size: { width: 7, height: 1.8, depth: 1.2 },
       position: new Vector3(0, 0.9, 0),
       material: coverMaterial,
+      walkable: true,
     },
     {
       name: "west-cover",
       size: { width: 1.2, height: 1.6, depth: 6 },
       position: new Vector3(-7.5, 0.8, 1.5),
       material: coverMaterial,
+      walkable: true,
     },
     {
       name: "east-cover",
       size: { width: 1.2, height: 1.6, depth: 6 },
       position: new Vector3(7.5, 0.8, -1.5),
       material: coverMaterial,
+      walkable: true,
     },
     {
       name: "player-spawn-shield",
@@ -226,6 +229,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
       position: new Vector3(-11.5, 1.2, -6.5),
       rotationY: -0.35,
       material: coverMaterial,
+      walkable: true,
     },
     {
       name: "bot-spawn-shield",
@@ -233,6 +237,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
       position: new Vector3(11.5, 1.2, 6.5),
       rotationY: -0.35,
       material: coverMaterial,
+      walkable: true,
     },
   ];
 
@@ -258,6 +263,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
       position,
       material: crateMaterial,
       rotationY: index % 2 === 0 ? 0.08 : -0.06,
+      walkable: true,
     });
   });
 
