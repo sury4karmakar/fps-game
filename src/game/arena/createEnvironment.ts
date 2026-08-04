@@ -46,22 +46,27 @@ export function createEnvironment(scene: Scene): ArenaEnvironment {
   ambientLight.diffuse = new Color3(0.78, 0.88, 1);
   ambientLight.groundColor = new Color3(0.16, 0.18, 0.22);
 
-  const sun = new DirectionalLight(
-    "arena-sun",
-    new Vector3(-0.6, -1, 0.35),
-    scene,
-  );
-  sun.position = new Vector3(14, 24, -16);
+  // A high, consistent sun direction keeps shadows close to the object that
+  // casts them. Its position is kept on the same line so the shadow camera is
+  // centred on the arena instead of looking past it.
+  const sunDirection = new Vector3(-0.25, -1, -0.2);
+  const sun = new DirectionalLight("arena-sun", sunDirection, scene);
+  sun.position = sunDirection.scale(-32);
   sun.intensity = 1.55;
   sun.diffuse = new Color3(1, 0.89, 0.72);
+  sun.autoCalcShadowZBounds = true;
+  sun.shadowOrthoScale = 0.05;
 
   const shadowGenerator = new ShadowGenerator(2048, sun);
   shadowGenerator.usePercentageCloserFiltering = true;
-  shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
+  shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+  // Arena geometry uses closed boxes. Rendering their back faces into the
+  // shadow map prevents the visible front faces from shadowing themselves.
+  shadowGenerator.forceBackFacesOnly = true;
   shadowGenerator.bias = 0.0005;
   shadowGenerator.normalBias = 0.02;
+  shadowGenerator.frustumEdgeFalloff = 0.1;
   shadowGenerator.setDarkness(0.28);
 
   return { shadowGenerator };
 }
-
