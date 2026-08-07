@@ -10,8 +10,17 @@
     <main id="game-shell">
       <canvas id="game-canvas" aria-label="Arena Strike game viewport" tabindex="0"></canvas>
 
+      <section id="weapon-hud" aria-label="Weapon status">
+        <div id="crosshair" aria-hidden="true"></div>
+        <div id="hit-marker" aria-hidden="true">×</div>
+        <div id="ammo-panel">
+          <span id="ammo-count">30 / 90</span>
+          <span id="reload-status" hidden>Reloading...</span>
+        </div>
+      </section>
+
       <p id="controls-hint">
-        Click the arena to aim | WASD move | Shift sprint | Space jump | Esc unlock mouse
+        Click to aim | WASD move | Shift sprint | Space jump | Left click fire | R reload | Esc unlock
       </p>
 
       <section id="status-overlay" class="status-overlay" role="status" aria-live="polite">

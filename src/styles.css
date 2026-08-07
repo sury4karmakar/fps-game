@@ -36,6 +36,92 @@ body {
   touch-action: none;
 }
 
+#weapon-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#crosshair,
+#hit-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#crosshair {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 75%));
+}
+
+#crosshair::before,
+#crosshair::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 2px;
+  background: rgb(245 250 255 / 92%);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+#crosshair::before {
+  width: 16px;
+  height: 2px;
+}
+
+#crosshair::after {
+  width: 2px;
+  height: 16px;
+}
+
+#hit-marker {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+  opacity: 0;
+  text-shadow: 0 0 5px rgb(255 174 76 / 95%);
+  transition: opacity 35ms ease;
+}
+
+#hit-marker.is-visible {
+  opacity: 1;
+}
+
+#ammo-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 22px;
+  display: grid;
+  justify-items: end;
+  min-width: 132px;
+  padding: 12px 15px;
+  border: 1px solid rgb(177 210 235 / 22%);
+  border-radius: 10px;
+  background: rgb(5 11 18 / 72%);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 28%);
+  font-variant-numeric: tabular-nums;
+}
+
+#ammo-count {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+#reload-status {
+  margin-top: 3px;
+  color: #ffb55f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 #controls-hint {
   position: absolute;
   bottom: 18px;
@@ -68,6 +154,7 @@ body {
   place-items: center;
   padding: 24px;
   background: rgb(4 8 13 / 78%);
+  z-index: 3;
   backdrop-filter: blur(10px);
   opacity: 1;
   transition: opacity 220ms ease, visibility 220ms ease;

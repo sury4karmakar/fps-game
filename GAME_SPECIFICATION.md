@@ -93,11 +93,11 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 4. Weapon System
 
-- [ ] Add a placeholder first-person rifle.
-- [ ] Add left-click hitscan shooting with raycasts.
-- [ ] Add fire rate and ammunition limits.
-- [ ] Add reload behavior.
-- [ ] Add recoil, muzzle flash, impact effects, and hit markers.
+- [x] Add a placeholder first-person rifle.
+- [x] Add left-click hitscan shooting with raycasts.
+- [x] Add fire rate and ammunition limits.
+- [x] Add reload behavior.
+- [x] Add recoil, muzzle flash, impact effects, and hit markers.
 
 ### 5. Damage, Health, and Respawning
 
@@ -182,4 +182,3 @@ The following work is intentionally deferred until the first playable version is
 - [ ] Add server-side validation and basic anti-cheat protections.
 
 Multiplayer remains outside the approved project scope and should not begin without a separate planning decision.
-

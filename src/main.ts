@@ -1,5 +1,6 @@
 import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
+import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
 
 type StatusState = "loading" | "ready" | "error";
 
@@ -18,6 +19,11 @@ const overlay = requireElement<HTMLElement>("#status-overlay");
 const statusTitle = requireElement<HTMLElement>("#status-title");
 const statusMessage = requireElement<HTMLElement>("#status-message");
 const retryButton = requireElement<HTMLButtonElement>("#retry-button");
+const weaponHud: WeaponHudElements = {
+  ammoCount: requireElement<HTMLElement>("#ammo-count"),
+  reloadStatus: requireElement<HTMLElement>("#reload-status"),
+  hitMarker: requireElement<HTMLElement>("#hit-marker"),
+};
 
 let application: GameApplication | null = null;
 
@@ -54,7 +60,7 @@ async function launchGame(): Promise<void> {
 
   try {
     application?.dispose();
-    application = new GameApplication(canvas);
+    application = new GameApplication(canvas, weaponHud);
     await application.start();
     setStatus("ready", "Ready", "The game foundation is running.");
   } catch (error) {
