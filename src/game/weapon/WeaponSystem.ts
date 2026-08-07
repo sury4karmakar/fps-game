@@ -80,6 +80,7 @@ export class WeaponSystem {
       mesh: AbstractMesh,
       damage: number,
     ) => WeaponDamageResult,
+    private readonly notifyWeaponFired: () => void,
   ) {
     const rifle = this.createRifleModel();
     this.rifleRoot = rifle.root;
@@ -194,6 +195,7 @@ export class WeaponSystem {
     this.nextShotAt = now + FIRE_INTERVAL_MS;
     this.updateHud();
     this.showMuzzleFlash();
+    this.notifyWeaponFired();
     this.fireHitscan();
     this.applyRecoil();
   }

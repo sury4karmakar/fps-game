@@ -39,6 +39,7 @@ export function createScene(
     playerController,
     combatSystem,
     arena.botPatrolPoints,
+    arena.botNavigationPoints,
   );
   const weaponSystem = new WeaponSystem(
     scene,
@@ -46,6 +47,7 @@ export function createScene(
     playerController.camera,
     weaponHud,
     (mesh, damage) => combatSystem.applyWeaponHit(mesh, damage),
+    () => botAI.notifyPlayerShot(playerController.camera.position),
   );
 
   return { scene, playerController, combatSystem, botAI, weaponSystem };

@@ -10,6 +10,7 @@ export interface ArenaSpawnPoint {
 export interface ArenaBuildResult {
   readonly collidableMeshes: readonly AbstractMesh[];
   readonly botPatrolPoints: readonly Vector3[];
+  readonly botNavigationPoints: readonly Vector3[];
   readonly spawnPoints: {
     readonly player: ArenaSpawnPoint;
     readonly bot: ArenaSpawnPoint;
