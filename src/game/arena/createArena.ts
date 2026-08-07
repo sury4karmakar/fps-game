@@ -325,6 +325,33 @@ export function createArena(scene: Scene): ArenaBuildResult {
     facingTarget: new Vector3(7, 1.4, 4),
   };
 
+  const playerRespawnPoints: readonly ArenaSpawnPoint[] = [
+    playerSpawn,
+    {
+      id: "player-north-west",
+      position: new Vector3(-14, 0, 9),
+      facingTarget: new Vector3(-6, 1.4, 4),
+    },
+    {
+      id: "player-south-center",
+      position: new Vector3(-6, 0, -11),
+      facingTarget: new Vector3(0, 1.4, -4),
+    },
+  ];
+  const botRespawnPoints: readonly ArenaSpawnPoint[] = [
+    botSpawn,
+    {
+      id: "bot-south-east",
+      position: new Vector3(14, 0, -9),
+      facingTarget: new Vector3(6, 1.4, -4),
+    },
+    {
+      id: "bot-north-center",
+      position: new Vector3(6, 0, 11),
+      facingTarget: new Vector3(0, 1.4, 4),
+    },
+  ];
+
   createSpawnPad(scene, playerSpawn, new Color3(0.15, 0.75, 1));
   createSpawnPad(scene, botSpawn, new Color3(1, 0.28, 0.18));
 
@@ -333,6 +360,10 @@ export function createArena(scene: Scene): ArenaBuildResult {
     spawnPoints: {
       player: playerSpawn,
       bot: botSpawn,
+    },
+    respawnPoints: {
+      player: playerRespawnPoints,
+      bot: botRespawnPoints,
     },
   };
 }

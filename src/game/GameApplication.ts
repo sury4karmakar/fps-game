@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import { createScene } from "./createScene";
+import type { CombatHudElements, CombatSystem } from "./combat/CombatSystem";
 import type { PlayerController } from "./player/PlayerController";
 import type { WeaponHudElements, WeaponSystem } from "./weapon/WeaponSystem";
 
@@ -8,6 +9,7 @@ export class GameApplication {
   private engine: Engine | null = null;
   private scene: Scene | null = null;
   private playerController: PlayerController | null = null;
+  private combatSystem: CombatSystem | null = null;
   private weaponSystem: WeaponSystem | null = null;
 
   private readonly handleResize = (): void => {
@@ -17,6 +19,7 @@ export class GameApplication {
   public constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly weaponHud: WeaponHudElements,
+    private readonly combatHud: CombatHudElements,
   ) {}
 
   public async start(): Promise<void> {
@@ -30,9 +33,15 @@ export class GameApplication {
       true,
     );
 
-    const gameScene = createScene(this.engine, this.canvas, this.weaponHud);
+    const gameScene = createScene(
+      this.engine,
+      this.canvas,
+      this.weaponHud,
+      this.combatHud,
+    );
     this.scene = gameScene.scene;
     this.playerController = gameScene.playerController;
+    this.combatSystem = gameScene.combatSystem;
     this.weaponSystem = gameScene.weaponSystem;
     await this.scene.whenReadyAsync();
 
@@ -47,10 +56,12 @@ export class GameApplication {
     window.removeEventListener("resize", this.handleResize);
     this.engine?.stopRenderLoop();
     this.weaponSystem?.dispose();
+    this.combatSystem?.dispose();
     this.playerController?.dispose();
     this.scene?.dispose();
     this.engine?.dispose();
     this.playerController = null;
+    this.combatSystem = null;
     this.weaponSystem = null;
     this.scene = null;
     this.engine = null;

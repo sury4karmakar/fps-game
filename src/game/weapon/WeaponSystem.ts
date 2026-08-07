@@ -2,6 +2,7 @@ import type { FreeCamera } from "@babylonjs/core/Cameras/freeCamera.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { Color3 } from "@babylonjs/core/Maths/math.color.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.pure.js";
@@ -17,6 +18,7 @@ const STARTING_RESERVE_AMMO = 90;
 const FIRE_INTERVAL_MS = 100;
 const RELOAD_DURATION_MS = 1_550;
 const WEAPON_RANGE = 80;
+const WEAPON_DAMAGE = 34;
 const RECOIL_KICK = 0.012;
 const RECOIL_RECOVERY_PER_SECOND = 0.055;
 const MUZZLE_FLASH_DURATION_MS = 45;
@@ -30,6 +32,11 @@ export interface WeaponHudElements {
   readonly ammoCount: HTMLElement;
   readonly reloadStatus: HTMLElement;
   readonly hitMarker: HTMLElement;
+}
+
+export interface WeaponDamageResult {
+  readonly damageApplied: boolean;
+  readonly eliminated: boolean;
 }
 
 interface ImpactEffect {
@@ -65,6 +72,10 @@ export class WeaponSystem {
     private readonly canvas: HTMLCanvasElement,
     private readonly camera: FreeCamera,
     private readonly hud: WeaponHudElements,
+    private readonly resolveDamageHit: (
+      mesh: AbstractMesh,
+      damage: number,
+    ) => WeaponDamageResult,
   ) {
     const rifle = this.createRifleModel();
     this.rifleRoot = rifle.root;
@@ -186,13 +197,17 @@ export class WeaponSystem {
     const ray = this.camera.getForwardRay(WEAPON_RANGE);
     const hit = this.scene.pickWithRay(ray, (mesh) => mesh.isPickable, false);
 
-    if (!hit?.hit || !hit.pickedPoint) {
+    if (!hit?.hit || !hit.pickedPoint || !hit.pickedMesh) {
       return;
     }
 
     const normal = hit.getNormal(true) ?? ray.direction.scale(-1);
     this.createImpactEffect(hit.pickedPoint, normal);
-    this.showHitMarker();
+    const damageResult = this.resolveDamageHit(hit.pickedMesh, WEAPON_DAMAGE);
+
+    if (damageResult.damageApplied) {
+      this.showHitMarker(damageResult.eliminated);
+    }
   }
 
   private startReload(now: number): void {
@@ -260,7 +275,8 @@ export class WeaponSystem {
     }, MUZZLE_FLASH_DURATION_MS);
   }
 
-  private showHitMarker(): void {
+  private showHitMarker(eliminated: boolean): void {
+    this.hud.hitMarker.classList.toggle("is-elimination", eliminated);
     this.hud.hitMarker.classList.add("is-visible");
 
     if (this.hitMarkerTimeout !== null) {
@@ -269,6 +285,7 @@ export class WeaponSystem {
 
     this.hitMarkerTimeout = window.setTimeout(() => {
       this.hud.hitMarker.classList.remove("is-visible");
+      this.hud.hitMarker.classList.remove("is-elimination");
       this.hitMarkerTimeout = null;
     }, HIT_MARKER_DURATION_MS);
   }

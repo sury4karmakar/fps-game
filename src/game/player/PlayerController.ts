@@ -30,6 +30,7 @@ export class PlayerController {
     GROUND_CHECK_DISTANCE,
   );
   private readonly movementObserver: Observer<Scene>;
+  private isEnabled = true;
   private isSprinting = false;
   private isGrounded = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
@@ -50,6 +51,11 @@ export class PlayerController {
     this.configureCamera();
 
     this.movementObserver = scene.onAfterAnimationsObservable.add(() => {
+      if (!this.isEnabled) {
+        this.camera.speed = 0;
+        return;
+      }
+
       this.camera.speed = this.isSprinting ? SPRINT_SPEED : WALK_SPEED;
       this.updateVerticalMotion();
     });
@@ -70,6 +76,39 @@ export class PlayerController {
     window.removeEventListener("keyup", this.handleKeyUp);
     window.removeEventListener("blur", this.resetInput);
     this.camera.dispose();
+  }
+
+  public setEnabled(enabled: boolean): void {
+    if (this.isEnabled === enabled) {
+      return;
+    }
+
+    this.isEnabled = enabled;
+    this.resetInput();
+    this.verticalVelocity = 0;
+
+    if (enabled) {
+      this.camera.attachControl(false);
+      return;
+    }
+
+    this.camera.detachControl();
+    this.camera.speed = 0;
+
+    if (document.pointerLockElement === this.canvas) {
+      document.exitPointerLock?.();
+    }
+  }
+
+  public respawn(spawnPoint: ArenaSpawnPoint): void {
+    this.camera.position.copyFrom(
+      spawnPoint.position.add(new Vector3(0, EYE_HEIGHT, 0)),
+    );
+    this.camera.setTarget(spawnPoint.facingTarget);
+    this.verticalVelocity = 0;
+    this.isGrounded = false;
+    this.lastJumpAt = Number.NEGATIVE_INFINITY;
+    this.setEnabled(true);
   }
 
   private configureCamera(): void {
@@ -98,7 +137,7 @@ export class PlayerController {
   }
 
   private readonly requestPointerLock = (): void => {
-    if (document.pointerLockElement !== this.canvas) {
+    if (this.isEnabled && document.pointerLockElement !== this.canvas) {
       void this.canvas.requestPointerLock?.();
     }
   };
@@ -113,7 +152,7 @@ export class PlayerController {
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
-    if (document.pointerLockElement !== this.canvas) {
+    if (!this.isEnabled || document.pointerLockElement !== this.canvas) {
       return;
     }
 

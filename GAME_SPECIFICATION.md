@@ -101,11 +101,11 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 5. Damage, Health, and Respawning
 
-- [ ] Add health to the player and bot.
-- [ ] Apply weapon damage on confirmed hits.
-- [ ] Add damage feedback.
-- [ ] Add death handling and a short respawn delay.
-- [ ] Add brief spawn protection and safe respawn selection.
+- [x] Add health to the player and bot.
+- [x] Apply weapon damage on confirmed hits.
+- [x] Add damage feedback.
+- [x] Add death handling and a short respawn delay.
+- [x] Add brief spawn protection and safe respawn selection.
 
 ### 6. Bot AI
 

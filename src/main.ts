@@ -1,5 +1,6 @@
 import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
+import type { CombatHudElements } from "./game/combat/CombatSystem";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
 
 type StatusState = "loading" | "ready" | "error";
@@ -23,6 +24,15 @@ const weaponHud: WeaponHudElements = {
   ammoCount: requireElement<HTMLElement>("#ammo-count"),
   reloadStatus: requireElement<HTMLElement>("#reload-status"),
   hitMarker: requireElement<HTMLElement>("#hit-marker"),
+};
+const combatHud: CombatHudElements = {
+  playerHealth: requireElement<HTMLElement>("#player-health"),
+  playerHealthFill: requireElement<HTMLElement>("#player-health-fill"),
+  botHealth: requireElement<HTMLElement>("#bot-health"),
+  botHealthFill: requireElement<HTMLElement>("#bot-health-fill"),
+  protectionStatus: requireElement<HTMLElement>("#protection-status"),
+  combatMessage: requireElement<HTMLElement>("#combat-message"),
+  damageOverlay: requireElement<HTMLElement>("#damage-overlay"),
 };
 
 let application: GameApplication | null = null;
@@ -60,7 +70,7 @@ async function launchGame(): Promise<void> {
 
   try {
     application?.dispose();
-    application = new GameApplication(canvas, weaponHud);
+    application = new GameApplication(canvas, weaponHud, combatHud);
     await application.start();
     setStatus("ready", "Ready", "The game foundation is running.");
   } catch (error) {

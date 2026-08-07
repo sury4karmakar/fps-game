@@ -11,8 +11,34 @@
       <canvas id="game-canvas" aria-label="Arena Strike game viewport" tabindex="0"></canvas>
 
       <section id="weapon-hud" aria-label="Weapon status">
+        <div id="damage-overlay" aria-hidden="true"></div>
         <div id="crosshair" aria-hidden="true"></div>
-        <div id="hit-marker" aria-hidden="true">×</div>
+        <div id="hit-marker" aria-hidden="true">&times;</div>
+        <p id="combat-message" role="status" aria-live="polite" hidden></p>
+
+        <section id="combat-health-hud" aria-label="Combat health">
+          <div class="health-card">
+            <div class="health-heading">
+              <span>Player</span>
+              <strong id="player-health">100</strong>
+            </div>
+            <div class="health-track" aria-hidden="true">
+              <span id="player-health-fill" class="health-fill player-health-fill"></span>
+            </div>
+            <span id="protection-status" hidden>Protected 1.5s</span>
+          </div>
+
+          <div class="health-card bot-health-card">
+            <div class="health-heading">
+              <span>Bot</span>
+              <strong id="bot-health">100</strong>
+            </div>
+            <div class="health-track" aria-hidden="true">
+              <span id="bot-health-fill" class="health-fill bot-health-fill"></span>
+            </div>
+          </div>
+        </section>
+
         <div id="ammo-panel">
           <span id="ammo-count">30 / 90</span>
           <span id="reload-status" hidden>Reloading...</span>
