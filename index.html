@@ -12,7 +12,13 @@
 
       <section id="weapon-hud" aria-label="Weapon status">
         <div id="damage-overlay" aria-hidden="true"></div>
-        <div id="crosshair" aria-hidden="true"></div>
+        <div id="crosshair" aria-hidden="true">
+          <span class="crosshair-arm crosshair-arm-top"></span>
+          <span class="crosshair-arm crosshair-arm-right"></span>
+          <span class="crosshair-arm crosshair-arm-bottom"></span>
+          <span class="crosshair-arm crosshair-arm-left"></span>
+          <span class="crosshair-dot"></span>
+        </div>
         <div id="hit-marker" aria-hidden="true">&times;</div>
         <p id="combat-message" role="status" aria-live="polite" hidden></p>
 
@@ -32,7 +38,7 @@
         <section id="combat-health-hud" aria-label="Combat health">
           <div class="health-card">
             <div class="health-heading">
-              <span>Player</span>
+              <span class="health-name"><i aria-hidden="true"></i>Player</span>
               <strong id="player-health">100</strong>
             </div>
             <div class="health-track" aria-hidden="true">
@@ -42,7 +48,7 @@
 
           <div class="health-card bot-health-card">
             <div class="health-heading">
-              <span>Bot</span>
+              <span class="health-name"><i aria-hidden="true"></i>Bot</span>
               <strong id="bot-health">100</strong>
             </div>
             <div class="health-track" aria-hidden="true">
@@ -52,6 +58,7 @@
         </section>
 
         <div id="ammo-panel">
+          <span class="ammo-label">Rifle ammunition</span>
           <span id="ammo-count">30 / 90</span>
           <span id="reload-status" hidden>Reloading...</span>
         </div>
@@ -63,15 +70,55 @@
 
       <section id="match-overlay" class="match-overlay" data-state="waiting" aria-live="polite">
         <div class="match-card">
+          <div class="match-emblem" aria-hidden="true"><span></span></div>
           <p id="match-eyebrow" class="eyebrow">Five-minute duel</p>
           <h2 id="match-title">Ready for the match?</h2>
-          <p id="match-message">
+          <p id="match-message" class="match-message">
             Score more eliminations than the bot before the clock reaches zero.
           </p>
-          <strong id="match-final-score" hidden>0 : 0</strong>
+
+          <section class="match-rules start-only" aria-label="Match rules">
+            <div>
+              <strong>05:00</strong>
+              <span>Round time</span>
+            </div>
+            <div>
+              <strong>1 vs 1</strong>
+              <span>Player vs bot</span>
+            </div>
+            <div>
+              <strong>Most kills</strong>
+              <span>Wins the match</span>
+            </div>
+          </section>
+
+          <section class="controls-panel start-only" aria-label="Game controls">
+            <h3>Controls</h3>
+            <div class="controls-grid">
+              <div><span class="control-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Move</span></div>
+              <div><span class="control-keys"><kbd>Mouse</kbd></span><span>Aim</span></div>
+              <div><span class="control-keys"><kbd>LMB</kbd></span><span>Fire</span></div>
+              <div><span class="control-keys"><kbd>Shift</kbd></span><span>Sprint</span></div>
+              <div><span class="control-keys"><kbd>Space</kbd></span><span>Jump</span></div>
+              <div><span class="control-keys"><kbd>R</kbd></span><span>Reload</span></div>
+            </div>
+          </section>
+
+          <section id="match-final-score" class="final-score" aria-label="Final score" hidden>
+            <div class="final-score-side player-final-score">
+              <span>Player</span>
+              <strong id="match-final-player-score">0</strong>
+            </div>
+            <span class="final-score-divider">:</span>
+            <div class="final-score-side bot-final-score">
+              <span>Bot</span>
+              <strong id="match-final-bot-score">0</strong>
+            </div>
+          </section>
           <button id="match-action-button" class="match-action-button" type="button">
             Start Match
           </button>
+          <p class="match-footnote start-only">Click Start Match, then click the arena to capture the mouse.</p>
         </div>
       </section>
 

@@ -44,6 +44,8 @@ const matchHud: MatchHudElements = {
   title: requireElement<HTMLElement>("#match-title"),
   message: requireElement<HTMLElement>("#match-message"),
   finalScore: requireElement<HTMLElement>("#match-final-score"),
+  finalPlayerScore: requireElement<HTMLElement>("#match-final-player-score"),
+  finalBotScore: requireElement<HTMLElement>("#match-final-bot-score"),
   actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
 };
 

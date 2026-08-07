@@ -20,6 +20,8 @@ export interface MatchHudElements {
   readonly title: HTMLElement;
   readonly message: HTMLElement;
   readonly finalScore: HTMLElement;
+  readonly finalPlayerScore: HTMLElement;
+  readonly finalBotScore: HTMLElement;
   readonly actionButton: HTMLButtonElement;
 }
 
@@ -149,7 +151,8 @@ export class MatchManager {
     this.hud.eyebrow.textContent = "Match complete";
     this.hud.title.textContent = resultCopy.title;
     this.hud.message.textContent = resultCopy.message;
-    this.hud.finalScore.textContent = `${this.playerKills} : ${this.botKills}`;
+    this.hud.finalPlayerScore.textContent = String(this.playerKills);
+    this.hud.finalBotScore.textContent = String(this.botKills);
     this.hud.finalScore.hidden = false;
     this.hud.actionButton.textContent = "Play Again";
   }

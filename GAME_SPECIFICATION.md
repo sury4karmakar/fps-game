@@ -127,11 +127,11 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 8. HUD and Menus
 
-- [ ] Create the start screen with controls.
-- [ ] Add the crosshair.
-- [ ] Display player health and ammunition.
-- [ ] Display player kills, bot kills, and remaining time.
-- [ ] Create the final result and restart screen.
+- [x] Create the start screen with controls.
+- [x] Add the crosshair.
+- [x] Display player health and ammunition.
+- [x] Display player kills, bot kills, and remaining time.
+- [x] Create the final result and restart screen.
 
 ### 9. Audio, Effects, and Quality
 
