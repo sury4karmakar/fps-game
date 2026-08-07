@@ -3,6 +3,7 @@ import type { Scene } from "@babylonjs/core/scene.js";
 import { createScene } from "./createScene";
 import type { BotAI } from "./bot/BotAI";
 import type { CombatHudElements, CombatSystem } from "./combat/CombatSystem";
+import type { MatchHudElements, MatchManager } from "./match/MatchManager";
 import type { PlayerController } from "./player/PlayerController";
 import type { WeaponHudElements, WeaponSystem } from "./weapon/WeaponSystem";
 
@@ -13,6 +14,7 @@ export class GameApplication {
   private combatSystem: CombatSystem | null = null;
   private botAI: BotAI | null = null;
   private weaponSystem: WeaponSystem | null = null;
+  private matchManager: MatchManager | null = null;
 
   private readonly handleResize = (): void => {
     this.engine?.resize();
@@ -22,6 +24,8 @@ export class GameApplication {
     private readonly canvas: HTMLCanvasElement,
     private readonly weaponHud: WeaponHudElements,
     private readonly combatHud: CombatHudElements,
+    private readonly matchHud: MatchHudElements,
+    private readonly matchDurationMs?: number,
   ) {}
 
   public async start(): Promise<void> {
@@ -40,12 +44,15 @@ export class GameApplication {
       this.canvas,
       this.weaponHud,
       this.combatHud,
+      this.matchHud,
+      this.matchDurationMs,
     );
     this.scene = gameScene.scene;
     this.playerController = gameScene.playerController;
     this.combatSystem = gameScene.combatSystem;
     this.botAI = gameScene.botAI;
     this.weaponSystem = gameScene.weaponSystem;
+    this.matchManager = gameScene.matchManager;
     await this.scene.whenReadyAsync();
 
     this.engine.runRenderLoop(() => {
@@ -58,6 +65,7 @@ export class GameApplication {
   public dispose(): void {
     window.removeEventListener("resize", this.handleResize);
     this.engine?.stopRenderLoop();
+    this.matchManager?.dispose();
     this.weaponSystem?.dispose();
     this.botAI?.dispose();
     this.combatSystem?.dispose();
@@ -68,6 +76,7 @@ export class GameApplication {
     this.combatSystem = null;
     this.botAI = null;
     this.weaponSystem = null;
+    this.matchManager = null;
     this.scene = null;
     this.engine = null;
   }

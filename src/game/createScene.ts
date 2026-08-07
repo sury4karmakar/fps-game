@@ -3,6 +3,7 @@ import { Scene } from "@babylonjs/core/scene.js";
 import { createArena } from "./arena/createArena";
 import { BotAI } from "./bot/BotAI";
 import { CombatSystem, type CombatHudElements } from "./combat/CombatSystem";
+import { MatchManager, type MatchHudElements } from "./match/MatchManager";
 import { PlayerController } from "./player/PlayerController";
 import { WeaponSystem, type WeaponHudElements } from "./weapon/WeaponSystem";
 
@@ -12,6 +13,7 @@ export interface SceneBuildResult {
   readonly combatSystem: CombatSystem;
   readonly botAI: BotAI;
   readonly weaponSystem: WeaponSystem;
+  readonly matchManager: MatchManager;
 }
 
 export function createScene(
@@ -19,6 +21,8 @@ export function createScene(
   canvas: HTMLCanvasElement,
   weaponHud: WeaponHudElements,
   combatHud: CombatHudElements,
+  matchHud: MatchHudElements,
+  matchDurationMs?: number,
 ): SceneBuildResult {
   const scene = new Scene(engine);
   const arena = createArena(scene);
@@ -28,11 +32,13 @@ export function createScene(
     arena.spawnPoints.player,
     arena.collidableMeshes,
   );
+  let matchManager: MatchManager | null = null;
   const combatSystem = new CombatSystem(
     scene,
     playerController,
     arena.respawnPoints,
     combatHud,
+    (killer) => matchManager?.recordKill(killer),
   );
   const botAI = new BotAI(
     scene,
@@ -49,6 +55,22 @@ export function createScene(
     (mesh, damage) => combatSystem.applyWeaponHit(mesh, damage),
     () => botAI.notifyPlayerShot(playerController.camera.position),
   );
+  matchManager = new MatchManager(
+    scene,
+    playerController,
+    combatSystem,
+    botAI,
+    weaponSystem,
+    matchHud,
+    matchDurationMs,
+  );
 
-  return { scene, playerController, combatSystem, botAI, weaponSystem };
+  return {
+    scene,
+    playerController,
+    combatSystem,
+    botAI,
+    weaponSystem,
+    matchManager,
+  };
 }

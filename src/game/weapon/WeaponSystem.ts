@@ -61,6 +61,7 @@ export class WeaponSystem {
   private readonly updateObserver: Observer<Scene>;
 
   private ammoInMagazine = MAGAZINE_CAPACITY;
+  private isEnabled = true;
   private isReloading = false;
   private isTriggerHeld = false;
   private nextShotAt = 0;
@@ -126,8 +127,55 @@ export class WeaponSystem {
     this.rifleRoot.dispose(false, true);
   }
 
+  public setEnabled(enabled: boolean): void {
+    this.isEnabled = enabled;
+    this.isTriggerHeld = false;
+
+    if (!enabled) {
+      this.isReloading = false;
+      this.rifleMagazine.visibility = 1;
+      this.muzzleFlash.setEnabled(false);
+      this.updateHud();
+    }
+  }
+
+  public resetForMatch(): void {
+    if (this.hitMarkerTimeout !== null) {
+      window.clearTimeout(this.hitMarkerTimeout);
+      this.hitMarkerTimeout = null;
+    }
+
+    if (this.muzzleFlashTimeout !== null) {
+      window.clearTimeout(this.muzzleFlashTimeout);
+      this.muzzleFlashTimeout = null;
+    }
+
+    this.ammoInMagazine = MAGAZINE_CAPACITY;
+    this.reserveAmmo = STARTING_RESERVE_AMMO;
+    this.isReloading = false;
+    this.isTriggerHeld = false;
+    this.nextShotAt = 0;
+    this.recoilToRecover = 0;
+    this.reloadFinishesAt = 0;
+    this.weaponKick = 0;
+    this.rifleMagazine.visibility = 1;
+    this.muzzleFlash.setEnabled(false);
+    this.hud.hitMarker.classList.remove("is-visible", "is-elimination");
+
+    for (const impact of this.impacts) {
+      impact.mesh.dispose();
+    }
+
+    this.impacts.length = 0;
+    this.updateHud();
+  }
+
   private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (event.button !== 0 || document.pointerLockElement !== this.canvas) {
+    if (
+      !this.isEnabled ||
+      event.button !== 0 ||
+      document.pointerLockElement !== this.canvas
+    ) {
       return;
     }
 
@@ -145,6 +193,7 @@ export class WeaponSystem {
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     if (
       document.pointerLockElement !== this.canvas ||
+      !this.isEnabled ||
       event.code !== "KeyR" ||
       event.repeat
     ) {
@@ -173,7 +222,11 @@ export class WeaponSystem {
       this.finishReload();
     }
 
-    if (this.isTriggerHeld && document.pointerLockElement === this.canvas) {
+    if (
+      this.isEnabled &&
+      this.isTriggerHeld &&
+      document.pointerLockElement === this.canvas
+    ) {
       this.tryFire(now);
     }
 
@@ -182,7 +235,7 @@ export class WeaponSystem {
   }
 
   private tryFire(now: number): void {
-    if (this.isReloading || now < this.nextShotAt) {
+    if (!this.isEnabled || this.isReloading || now < this.nextShotAt) {
       return;
     }
 

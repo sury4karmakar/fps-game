@@ -83,6 +83,7 @@ export class BotAI {
   private searchUntil = 0;
   private nextSearchTurnAt = 0;
   private hadVisualContact = false;
+  private isEnabled = true;
   private wasBotAlive = true;
 
   private route: Vector3[] = [];
@@ -117,8 +118,22 @@ export class BotAI {
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
   }
 
+  public setEnabled(enabled: boolean): void {
+    if (this.isEnabled === enabled) {
+      return;
+    }
+
+    this.isEnabled = enabled;
+
+    if (enabled) {
+      this.wasBotAlive = this.combatSystem.isBotAlive;
+      this.resetAfterRespawn(performance.now());
+    }
+  }
+
   public notifyPlayerShot(playerPosition: Vector3): void {
     if (
+      !this.isEnabled ||
       !this.combatSystem.isBotAlive ||
       Vector3.Distance(this.combatSystem.getBotPosition(), playerPosition) >
         HEARING_RANGE
@@ -137,6 +152,10 @@ export class BotAI {
   }
 
   private update(): void {
+    if (!this.isEnabled) {
+      return;
+    }
+
     const now = performance.now();
     const deltaSeconds = Math.min(
       this.scene.getEngine().getDeltaTime() / 1000,

@@ -29,6 +29,7 @@ const BOT_EYE_HEIGHT = 1.62;
 const BOT_MUZZLE_FLASH_MS = 55;
 
 type CombatantId = "player" | "bot";
+export type KillOwner = CombatantId;
 type HitZone = "body" | "head";
 
 interface CombatantState {
@@ -57,8 +58,6 @@ export interface CombatHudElements {
   readonly playerHealthFill: HTMLElement;
   readonly botHealth: HTMLElement;
   readonly botHealthFill: HTMLElement;
-  readonly playerScore: HTMLElement;
-  readonly botScore: HTMLElement;
   readonly combatMessage: HTMLElement;
   readonly damageOverlay: HTMLElement;
 }
@@ -76,10 +75,9 @@ export class CombatSystem {
 
   private botDamageFlashUntil = 0;
   private botMuzzleFlashUntil = 0;
+  private combatEnabled = false;
   private playerDamageFlashUntil = 0;
   private messageVisibleUntil = 0;
-  private playerKills = 0;
-  private botKills = 0;
 
   public constructor(
     private readonly scene: Scene,
@@ -89,6 +87,7 @@ export class CombatSystem {
       readonly bot: readonly ArenaSpawnPoint[];
     },
     private readonly hud: CombatHudElements,
+    private readonly reportKill: (killer: KillOwner) => void,
   ) {
     const now = performance.now();
 
@@ -113,7 +112,11 @@ export class CombatSystem {
   public applyWeaponHit(mesh: AbstractMesh, baseDamage: number): CombatHitResult {
     const metadata = mesh.metadata as DamageableMetadata | null;
 
-    if (metadata?.combatantId !== "bot" || !this.botState.alive) {
+    if (
+      !this.combatEnabled ||
+      metadata?.combatantId !== "bot" ||
+      !this.botState.alive
+    ) {
       return { damageApplied: false, eliminated: false };
     }
 
@@ -134,8 +137,12 @@ export class CombatSystem {
   public damagePlayer(damage: number): boolean {
     const now = performance.now();
 
-    if (!this.playerState.alive || this.isSpawnProtected(this.playerState, now)) {
-      if (this.playerState.alive) {
+    if (
+      !this.combatEnabled ||
+      !this.playerState.alive ||
+      this.isSpawnProtected(this.playerState, now)
+    ) {
+      if (this.combatEnabled && this.playerState.alive) {
         this.showMessage("SPAWN PROTECTED", now);
       }
       return false;
@@ -151,6 +158,45 @@ export class CombatSystem {
 
   public get isPlayerAlive(): boolean {
     return this.playerState.alive;
+  }
+
+  public setCombatEnabled(enabled: boolean): void {
+    this.combatEnabled = enabled;
+
+    if (!enabled) {
+      this.bot.muzzleFlash.setEnabled(false);
+      this.updateBotProtectionVisual(false, performance.now());
+      this.hud.damageOverlay.classList.remove("is-visible");
+      this.hud.combatMessage.hidden = true;
+    }
+  }
+
+  public resetForMatch(now = performance.now()): void {
+    const playerSpawn = this.respawnPoints.player[0];
+    const botSpawn = this.respawnPoints.bot[0];
+
+    if (!playerSpawn || !botSpawn) {
+      throw new Error("Arena Strike requires player and bot match spawns.");
+    }
+
+    this.resetState(this.playerState, now);
+    this.resetState(this.botState, now);
+    this.playerController.respawn(playerSpawn);
+    this.bot.root.position.copyFrom(botSpawn.position);
+    this.bot.collisionBody.position.copyFrom(
+      botSpawn.position.add(new Vector3(0, BOT_COLLIDER_HALF_HEIGHT, 0)),
+    );
+    this.faceBotToward(botSpawn.facingTarget);
+    this.bot.collisionBody.setEnabled(true);
+    this.bot.root.setEnabled(true);
+    this.botDamageFlashUntil = 0;
+    this.botMuzzleFlashUntil = 0;
+    this.playerDamageFlashUntil = 0;
+    this.messageVisibleUntil = 0;
+    this.bot.muzzleFlash.setEnabled(false);
+    this.hud.damageOverlay.classList.remove("is-visible");
+    this.hud.combatMessage.hidden = true;
+    this.updateHud(now);
   }
 
   public getBotPosition(): Vector3 {
@@ -174,7 +220,7 @@ export class CombatSystem {
   }
 
   public moveBot(displacement: Vector3): number {
-    if (!this.botState.alive) {
+    if (!this.combatEnabled || !this.botState.alive) {
       return 0;
     }
 
@@ -196,7 +242,7 @@ export class CombatSystem {
   }
 
   public showBotMuzzleFlash(now: number): void {
-    if (!this.botState.alive) {
+    if (!this.combatEnabled || !this.botState.alive) {
       return;
     }
 
@@ -216,6 +262,10 @@ export class CombatSystem {
 
   private update(): void {
     const now = performance.now();
+
+    if (!this.combatEnabled) {
+      return;
+    }
 
     if (!this.playerState.alive && now >= this.playerState.respawnAt) {
       this.respawnPlayer(now);
@@ -281,17 +331,15 @@ export class CombatSystem {
     state.spawnProtectedUntil = 0;
 
     if (target === "player") {
-      this.botKills += 1;
       this.playerController.setEnabled(false);
       this.showMessage("YOU WERE ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
+      this.reportKill("bot");
     } else {
-      this.playerKills += 1;
       this.bot.root.setEnabled(false);
       this.bot.collisionBody.setEnabled(false);
       this.showMessage("BOT ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
+      this.reportKill("player");
     }
-
-    this.updateScoreHud();
   }
 
   private respawnPlayer(now: number): void {
@@ -386,7 +434,6 @@ export class CombatSystem {
 
   private updateHud(now: number): void {
     this.updateHealthHud();
-    this.updateScoreHud();
     this.updateBotProtectionVisual(
       this.botState.alive && this.isSpawnProtected(this.botState, now),
       now,
@@ -401,11 +448,6 @@ export class CombatSystem {
 
     this.hud.playerHealth.dataset.level = this.getHealthLevel(this.playerState.health);
     this.hud.botHealth.dataset.level = this.getHealthLevel(this.botState.health);
-  }
-
-  private updateScoreHud(): void {
-    this.hud.playerScore.textContent = String(this.playerKills);
-    this.hud.botScore.textContent = String(this.botKills);
   }
 
   private updateBotProtectionVisual(isProtected: boolean, now: number): void {

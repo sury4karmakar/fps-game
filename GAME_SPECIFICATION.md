@@ -118,12 +118,12 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 7. Match Manager
 
-- [ ] Add match states: waiting, playing, and finished.
-- [ ] Add the five-minute countdown timer.
-- [ ] Track player and bot kills.
-- [ ] Stop combat when the timer reaches zero.
-- [ ] Determine Player Win, Bot Win, or Draw.
-- [ ] Add match restart behavior.
+- [x] Add match states: waiting, playing, and finished.
+- [x] Add the five-minute countdown timer.
+- [x] Track player and bot kills.
+- [x] Stop combat when the timer reaches zero.
+- [x] Determine Player Win, Bot Win, or Draw.
+- [x] Add match restart behavior.
 
 ### 8. HUD and Menus
 

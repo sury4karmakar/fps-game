@@ -16,6 +16,11 @@
         <div id="hit-marker" aria-hidden="true">&times;</div>
         <p id="combat-message" role="status" aria-live="polite" hidden></p>
 
+        <section id="match-clock-panel" aria-label="Match status and remaining time">
+          <span id="match-state" data-state="waiting">Waiting</span>
+          <strong id="match-timer">05:00</strong>
+        </section>
+
         <section id="score-panel" aria-label="Elimination score">
           <span class="score-side player-score-side">Player</span>
           <strong id="player-score">0</strong>
@@ -55,6 +60,20 @@
       <p id="controls-hint">
         Click to aim | WASD move | Shift sprint | Space jump | Left click fire | R reload | Esc unlock
       </p>
+
+      <section id="match-overlay" class="match-overlay" data-state="waiting" aria-live="polite">
+        <div class="match-card">
+          <p id="match-eyebrow" class="eyebrow">Five-minute duel</p>
+          <h2 id="match-title">Ready for the match?</h2>
+          <p id="match-message">
+            Score more eliminations than the bot before the clock reaches zero.
+          </p>
+          <strong id="match-final-score" hidden>0 : 0</strong>
+          <button id="match-action-button" class="match-action-button" type="button">
+            Start Match
+          </button>
+        </div>
+      </section>
 
       <section id="status-overlay" class="status-overlay" role="status" aria-live="polite">
         <div class="status-card">

@@ -1,6 +1,7 @@
 import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
 import type { CombatHudElements } from "./game/combat/CombatSystem";
+import type { MatchHudElements } from "./game/match/MatchManager";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
 
 type StatusState = "loading" | "ready" | "error";
@@ -30,13 +31,34 @@ const combatHud: CombatHudElements = {
   playerHealthFill: requireElement<HTMLElement>("#player-health-fill"),
   botHealth: requireElement<HTMLElement>("#bot-health"),
   botHealthFill: requireElement<HTMLElement>("#bot-health-fill"),
-  playerScore: requireElement<HTMLElement>("#player-score"),
-  botScore: requireElement<HTMLElement>("#bot-score"),
   combatMessage: requireElement<HTMLElement>("#combat-message"),
   damageOverlay: requireElement<HTMLElement>("#damage-overlay"),
 };
+const matchHud: MatchHudElements = {
+  state: requireElement<HTMLElement>("#match-state"),
+  timer: requireElement<HTMLElement>("#match-timer"),
+  playerScore: requireElement<HTMLElement>("#player-score"),
+  botScore: requireElement<HTMLElement>("#bot-score"),
+  overlay: requireElement<HTMLElement>("#match-overlay"),
+  eyebrow: requireElement<HTMLElement>("#match-eyebrow"),
+  title: requireElement<HTMLElement>("#match-title"),
+  message: requireElement<HTMLElement>("#match-message"),
+  finalScore: requireElement<HTMLElement>("#match-final-score"),
+  actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
+};
 
 let application: GameApplication | null = null;
+
+function getDevelopmentMatchDurationMs(): number | undefined {
+  if (!import.meta.env.DEV) {
+    return undefined;
+  }
+
+  const seconds = Number(
+    new URLSearchParams(window.location.search).get("matchSeconds"),
+  );
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : undefined;
+}
 
 function setStatus(state: StatusState, title: string, message: string): void {
   overlay.dataset.state = state;
@@ -71,7 +93,13 @@ async function launchGame(): Promise<void> {
 
   try {
     application?.dispose();
-    application = new GameApplication(canvas, weaponHud, combatHud);
+    application = new GameApplication(
+      canvas,
+      weaponHud,
+      combatHud,
+      matchHud,
+      getDevelopmentMatchDurationMs(),
+    );
     await application.start();
     setStatus("ready", "Ready", "The game foundation is running.");
   } catch (error) {
