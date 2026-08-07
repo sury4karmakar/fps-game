@@ -27,6 +27,8 @@ const IMPACT_LIFETIME_MS = 360;
 
 const RIFLE_IDLE_POSITION = new Vector3(0.31, -0.29, 0.58);
 const RIFLE_IDLE_ROTATION = new Vector3(-0.025, -0.025, 0);
+const MAGAZINE_IDLE_POSITION = new Vector3(0, -0.2, 0.08);
+const MAGAZINE_IDLE_ROTATION = new Vector3(-0.16, 0, 0);
 
 export interface WeaponHudElements {
   readonly ammoCount: HTMLElement;
@@ -46,6 +48,7 @@ interface ImpactEffect {
 
 interface RifleModel {
   readonly root: TransformNode;
+  readonly magazine: Mesh;
   readonly muzzleFlash: Mesh;
 }
 
@@ -53,6 +56,7 @@ export class WeaponSystem {
   private readonly impactMaterial: StandardMaterial;
   private readonly impacts: ImpactEffect[] = [];
   private readonly muzzleFlash: Mesh;
+  private readonly rifleMagazine: Mesh;
   private readonly rifleRoot: TransformNode;
   private readonly updateObserver: Observer<Scene>;
 
@@ -79,6 +83,7 @@ export class WeaponSystem {
   ) {
     const rifle = this.createRifleModel();
     this.rifleRoot = rifle.root;
+    this.rifleMagazine = rifle.magazine;
     this.muzzleFlash = rifle.muzzleFlash;
     this.impactMaterial = this.createImpactMaterial();
 
@@ -171,7 +176,7 @@ export class WeaponSystem {
       this.tryFire(now);
     }
 
-    this.updateRecoil(deltaSeconds);
+    this.updateWeaponTransform(deltaSeconds, now);
     this.updateImpacts(now);
   }
 
@@ -188,9 +193,9 @@ export class WeaponSystem {
     this.ammoInMagazine -= 1;
     this.nextShotAt = now + FIRE_INTERVAL_MS;
     this.updateHud();
-    this.applyRecoil();
     this.showMuzzleFlash();
     this.fireHitscan();
+    this.applyRecoil();
   }
 
   private fireHitscan(): void {
@@ -232,6 +237,7 @@ export class WeaponSystem {
     this.ammoInMagazine += loadedAmmo;
     this.reserveAmmo -= loadedAmmo;
     this.isReloading = false;
+    this.rifleMagazine.visibility = 1;
     this.updateHud();
   }
 
@@ -244,7 +250,7 @@ export class WeaponSystem {
     this.weaponKick = Math.min(this.weaponKick + 0.065, 0.1);
   }
 
-  private updateRecoil(deltaSeconds: number): void {
+  private updateWeaponTransform(deltaSeconds: number, now: number): void {
     if (this.recoilToRecover > 0) {
       const recovery = Math.min(
         this.recoilToRecover,
@@ -259,6 +265,54 @@ export class WeaponSystem {
     this.rifleRoot.position.z -= this.weaponKick;
     this.rifleRoot.rotation.copyFrom(RIFLE_IDLE_ROTATION);
     this.rifleRoot.rotation.x += this.weaponKick * 0.35;
+    this.rifleMagazine.position.copyFrom(MAGAZINE_IDLE_POSITION);
+    this.rifleMagazine.rotation.copyFrom(MAGAZINE_IDLE_ROTATION);
+    this.rifleMagazine.visibility = 1;
+
+    if (this.isReloading) {
+      this.applyReloadAnimation(now);
+    }
+  }
+
+  private applyReloadAnimation(now: number): void {
+    const progress = Math.min(
+      1,
+      Math.max(0, 1 - (this.reloadFinishesAt - now) / RELOAD_DURATION_MS),
+    );
+    const poseStrength = Math.sin(progress * Math.PI);
+
+    this.rifleRoot.position.x += poseStrength * 0.08;
+    this.rifleRoot.position.y -= poseStrength * 0.16;
+    this.rifleRoot.position.z -= poseStrength * 0.05;
+    this.rifleRoot.rotation.x += poseStrength * 0.2;
+    this.rifleRoot.rotation.z += poseStrength * 0.52;
+
+    if (progress < 0.2) {
+      return;
+    }
+
+    if (progress < 0.42) {
+      const removalProgress = this.smoothStep((progress - 0.2) / 0.22);
+      this.rifleMagazine.position.y -= removalProgress * 0.34;
+      this.rifleMagazine.rotation.z += removalProgress * 0.16;
+      return;
+    }
+
+    if (progress < 0.57) {
+      this.rifleMagazine.visibility = 0;
+      return;
+    }
+
+    if (progress < 0.82) {
+      const insertionProgress = this.smoothStep((progress - 0.57) / 0.25);
+      this.rifleMagazine.position.y -= (1 - insertionProgress) * 0.34;
+      this.rifleMagazine.rotation.z += (1 - insertionProgress) * 0.16;
+    }
+  }
+
+  private smoothStep(value: number): number {
+    const clamped = Math.min(1, Math.max(0, value));
+    return clamped * clamped * (3 - 2 * clamped);
   }
 
   private showMuzzleFlash(): void {
@@ -404,8 +458,8 @@ export class WeaponSystem {
       ),
       bodyMaterial,
     );
-    magazine.position.set(0, -0.2, 0.08);
-    magazine.rotation.x = -0.16;
+    magazine.position.copyFrom(MAGAZINE_IDLE_POSITION);
+    magazine.rotation.copyFrom(MAGAZINE_IDLE_ROTATION);
 
     const barrel = attachPart(
       CreateCylinder(
@@ -440,7 +494,7 @@ export class WeaponSystem {
     muzzleFlash.scaling.z = 1.8;
     muzzleFlash.setEnabled(false);
 
-    return { root, muzzleFlash };
+    return { root, magazine, muzzleFlash };
   }
 
   private createImpactMaterial(): StandardMaterial {

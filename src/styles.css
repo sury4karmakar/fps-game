@@ -202,20 +202,6 @@ body {
   background: linear-gradient(90deg, #ff5148, #ff9b65);
 }
 
-#protection-status {
-  display: block;
-  margin-top: 7px;
-  color: #79c9ff;
-  font-size: 0.6rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-#protection-status[hidden] {
-  display: none;
-}
-
 #ammo-panel {
   position: absolute;
   right: 24px;

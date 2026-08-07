@@ -30,7 +30,6 @@ const combatHud: CombatHudElements = {
   playerHealthFill: requireElement<HTMLElement>("#player-health-fill"),
   botHealth: requireElement<HTMLElement>("#bot-health"),
   botHealthFill: requireElement<HTMLElement>("#bot-health-fill"),
-  protectionStatus: requireElement<HTMLElement>("#protection-status"),
   combatMessage: requireElement<HTMLElement>("#combat-message"),
   damageOverlay: requireElement<HTMLElement>("#damage-overlay"),
 };

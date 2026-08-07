@@ -6,8 +6,8 @@ import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import type { ArenaSpawnPoint } from "../arena/arenaTypes";
 
-const WALK_SPEED = 0.34;
-const SPRINT_SPEED = 0.58;
+const WALK_SPEED = 0.40;
+const SPRINT_SPEED = 0.60;
 const JUMP_SPEED = 6.2;
 const GRAVITY = 18;
 const EYE_HEIGHT = 1.7;

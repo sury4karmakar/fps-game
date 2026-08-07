@@ -9,7 +9,10 @@ import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.pure
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
+import "@babylonjs/core/Rendering/outlineRenderer.js";
 import type { Scene } from "@babylonjs/core/scene.js";
+import "@babylonjs/core/Shaders/outline.fragment.js";
+import "@babylonjs/core/Shaders/outline.vertex.js";
 import type { ArenaSpawnPoint } from "../arena/arenaTypes";
 import type { PlayerController } from "../player/PlayerController";
 
@@ -20,6 +23,7 @@ const DAMAGE_FLASH_MS = 180;
 const STATUS_MESSAGE_MS = 1_250;
 const HEADSHOT_MULTIPLIER = 3;
 const COVER_SAFETY_BONUS = 500;
+const SPAWN_PROTECTION_COLOR = new Color3(0.1, 0.78, 1);
 
 type CombatantId = "player" | "bot";
 type HitZone = "body" | "head";
@@ -40,7 +44,7 @@ interface BotModel {
   readonly root: TransformNode;
   readonly bodyMaterial: StandardMaterial;
   readonly headMaterial: StandardMaterial;
-  readonly protectionShield: Mesh;
+  readonly protectedMeshes: readonly Mesh[];
 }
 
 export interface CombatHudElements {
@@ -48,7 +52,6 @@ export interface CombatHudElements {
   readonly playerHealthFill: HTMLElement;
   readonly botHealth: HTMLElement;
   readonly botHealthFill: HTMLElement;
-  readonly protectionStatus: HTMLElement;
   readonly combatMessage: HTMLElement;
   readonly damageOverlay: HTMLElement;
 }
@@ -94,7 +97,6 @@ export class CombatSystem {
     this.bot.root.dispose(false, true);
     this.hud.damageOverlay.classList.remove("is-visible");
     this.hud.combatMessage.hidden = true;
-    this.hud.protectionStatus.hidden = true;
   }
 
   public applyWeaponHit(mesh: AbstractMesh, baseDamage: number): CombatHitResult {
@@ -154,7 +156,7 @@ export class CombatSystem {
 
     const botIsProtected =
       this.botState.alive && this.isSpawnProtected(this.botState, now);
-    this.bot.protectionShield.setEnabled(botIsProtected);
+    this.updateBotProtectionVisual(botIsProtected, now);
 
     if (now >= this.botDamageFlashUntil) {
       this.bot.bodyMaterial.emissiveColor.copyFromFloats(0, 0, 0);
@@ -169,7 +171,6 @@ export class CombatSystem {
       this.hud.combatMessage.hidden = true;
     }
 
-    this.updateProtectionHud(now);
   }
 
   private applyDamage(target: CombatantId, damage: number, now: number): boolean {
@@ -235,7 +236,7 @@ export class CombatSystem {
     this.bot.root.position.copyFrom(safeSpawn.position);
     this.faceBotToward(safeSpawn.facingTarget);
     this.bot.root.setEnabled(true);
-    this.bot.protectionShield.setEnabled(true);
+    this.updateBotProtectionVisual(true, now);
     this.showMessage("BOT RESPAWNED", now);
     this.updateHealthHud();
   }
@@ -301,7 +302,10 @@ export class CombatSystem {
 
   private updateHud(now: number): void {
     this.updateHealthHud();
-    this.updateProtectionHud(now);
+    this.updateBotProtectionVisual(
+      this.botState.alive && this.isSpawnProtected(this.botState, now),
+      now,
+    );
   }
 
   private updateHealthHud(): void {
@@ -314,15 +318,13 @@ export class CombatSystem {
     this.hud.botHealth.dataset.level = this.getHealthLevel(this.botState.health);
   }
 
-  private updateProtectionHud(now: number): void {
-    const remainingProtection = this.playerState.spawnProtectedUntil - now;
-    const showProtection = this.playerState.alive && remainingProtection > 0;
-    this.hud.protectionStatus.hidden = !showProtection;
+  private updateBotProtectionVisual(isProtected: boolean, now: number): void {
+    const pulse = 0.075 + (Math.sin(now * 0.009) + 1) * 0.018;
 
-    if (showProtection) {
-      this.hud.protectionStatus.textContent = `Protected ${(
-        remainingProtection / 1000
-      ).toFixed(1)}s`;
+    for (const mesh of this.bot.protectedMeshes) {
+      mesh.renderOutline = isProtected;
+      mesh.outlineColor.copyFrom(SPAWN_PROTECTION_COLOR);
+      mesh.outlineWidth = pulse;
     }
   }
 
@@ -355,6 +357,8 @@ export class CombatSystem {
 
     const root = new TransformNode("bot-target-root", this.scene);
     root.position.copyFrom(spawnPoint.position);
+    root.scaling.y = 0.85;
+    const protectedMeshes: Mesh[] = [];
 
     const bodyMaterial = new StandardMaterial("bot-body-material", this.scene);
     bodyMaterial.diffuseColor = new Color3(0.55, 0.08, 0.055);
@@ -363,15 +367,6 @@ export class CombatSystem {
     const headMaterial = new StandardMaterial("bot-head-material", this.scene);
     headMaterial.diffuseColor = new Color3(0.72, 0.2, 0.08);
     headMaterial.specularColor = new Color3(0.22, 0.22, 0.22);
-
-    const protectionMaterial = new StandardMaterial(
-      "bot-spawn-protection-material",
-      this.scene,
-    );
-    protectionMaterial.diffuseColor = new Color3(0.12, 0.55, 1);
-    protectionMaterial.emissiveColor = new Color3(0.05, 0.25, 0.8);
-    protectionMaterial.alpha = 0.22;
-    protectionMaterial.wireframe = true;
 
     const configureHitZone = (
       mesh: Mesh,
@@ -384,6 +379,7 @@ export class CombatSystem {
       mesh.checkCollisions = false;
       mesh.receiveShadows = true;
       mesh.metadata = { combatantId: "bot", hitZone } satisfies DamageableMetadata;
+      protectedMeshes.push(mesh);
       return mesh;
     };
 
@@ -431,21 +427,9 @@ export class CombatSystem {
     );
     rightLeg.position.set(0.2, 0.34, 0);
 
-    const protectionShield = CreateSphere(
-      "bot-spawn-protection-shield",
-      { diameter: 2.65, segments: 16 },
-      this.scene,
-    );
-    protectionShield.parent = root;
-    protectionShield.position.y = 1.15;
-    protectionShield.scaling.y = 1.08;
-    protectionShield.material = protectionMaterial;
-    protectionShield.isPickable = false;
-    protectionShield.checkCollisions = false;
-
     this.faceBotToward(spawnPoint.facingTarget, root);
 
-    return { root, bodyMaterial, headMaterial, protectionShield };
+    return { root, bodyMaterial, headMaterial, protectedMeshes };
   }
 
   private faceBotToward(
