@@ -38,12 +38,14 @@ export function createScene(
     (sprinting) => audioSystem.playFootstep(sprinting),
   );
   let matchManager: MatchManager | null = null;
+  let weaponSystem: WeaponSystem | null = null;
   const combatSystem = new CombatSystem(
     scene,
     playerController,
     arena.respawnPoints,
     combatHud,
     (killer) => matchManager?.recordKill(killer),
+    (amount) => weaponSystem?.addAmmo(amount) ?? 0,
     audioSystem,
   );
   const botAI = new BotAI(
@@ -53,7 +55,7 @@ export function createScene(
     arena.botPatrolPoints,
     arena.botNavigationPoints,
   );
-  const weaponSystem = new WeaponSystem(
+  weaponSystem = new WeaponSystem(
     scene,
     canvas,
     playerController.camera,

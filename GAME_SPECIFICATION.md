@@ -88,6 +88,7 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 - [x] Add pointer-lock mouse controls.
 - [x] Add WASD movement and mouse look.
 - [x] Add sprinting and jumping.
+- [x] Add hold-to-crouch movement with Left Ctrl.
 - [x] Add gravity and world collision.
 - [x] Tune movement speed, jump height, and camera feel.
 
@@ -96,6 +97,7 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 - [x] Add a placeholder first-person rifle.
 - [x] Add left-click hitscan shooting with raycasts.
 - [x] Add fire rate and ammunition limits.
+- [x] Cap total ammunition at 90 rounds.
 - [x] Add reload behavior.
 - [x] Add recoil, muzzle flash, impact effects, and hit markers.
 
@@ -106,6 +108,7 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 - [x] Add damage feedback.
 - [x] Add death handling and a short respawn delay.
 - [x] Add brief spawn protection and safe respawn selection.
+- [x] Drop a 15-second health and ammunition pickup when the bot is eliminated.
 
 ### 6. Bot AI
 
@@ -164,7 +167,7 @@ The following work is intentionally deferred until the first playable version is
 - [ ] Add improved navigation and tactical bot behavior.
 - [ ] Add additional weapons and weapon switching.
 - [ ] Add a second arena and map selection.
-- [ ] Add pickups such as health, ammunition, and armor.
+- [ ] Add additional pickup types such as armor.
 - [ ] Add better character, weapon, and reload animations.
 - [ ] Add settings for controls, mouse sensitivity, audio, and graphics.
 

@@ -8,9 +8,14 @@ import type { ArenaSpawnPoint } from "../arena/arenaTypes";
 
 const WALK_SPEED = 0.40;
 const SPRINT_SPEED = 0.60;
+const CROUCH_SPEED = 0.25;
 const JUMP_SPEED = 6.2;
 const GRAVITY = 18;
-const EYE_HEIGHT = 1.7;
+const STANDING_EYE_HEIGHT = 1.7;
+const CROUCH_EYE_HEIGHT = 1.08;
+const STANDING_COLLIDER_HEIGHT = 0.85;
+const CROUCH_COLLIDER_HEIGHT = 0.5;
+const CROUCH_TRANSITION_SPEED = 4.8;
 const GROUND_CHECK_DISTANCE = 6;
 const GROUND_SNAP_DISTANCE = 0.12;
 const MAX_STEP_HEIGHT = 0.24;
@@ -32,9 +37,16 @@ export class PlayerController {
     new Vector3(0, -1, 0),
     GROUND_CHECK_DISTANCE,
   );
+  private readonly ceilingRay = new Ray(
+    Vector3.Zero(),
+    Vector3.Up(),
+    STANDING_EYE_HEIGHT - CROUCH_EYE_HEIGHT + STANDING_COLLIDER_HEIGHT,
+  );
   private readonly movementObserver: Observer<Scene>;
   private readonly lastFootstepPosition = Vector3.Zero();
   private footstepDistance = 0;
+  private currentEyeHeight = STANDING_EYE_HEIGHT;
+  private isCrouchRequested = false;
   private isEnabled = true;
   private isSprinting = false;
   private isGrounded = false;
@@ -51,7 +63,7 @@ export class PlayerController {
   ) {
     this.camera = new FreeCamera(
       "player-camera",
-      spawnPoint.position.add(new Vector3(0, EYE_HEIGHT, 0)),
+      spawnPoint.position.add(new Vector3(0, STANDING_EYE_HEIGHT, 0)),
       scene,
     );
     this.camera.setTarget(spawnPoint.facingTarget);
@@ -64,14 +76,26 @@ export class PlayerController {
         return;
       }
 
-      this.camera.speed = this.isSprinting ? SPRINT_SPEED : WALK_SPEED;
+      const deltaSeconds = Math.min(
+        this.scene.getEngine().getDeltaTime() / 1_000,
+        0.05,
+      );
+      this.updateCrouch(deltaSeconds);
+      this.camera.speed = this.isCrouching()
+        ? CROUCH_SPEED
+        : this.isSprinting
+          ? SPRINT_SPEED
+          : WALK_SPEED;
       this.updateVerticalMotion();
       this.updateFootsteps();
     });
 
     this.canvas.addEventListener("click", this.requestPointerLock);
     document.addEventListener("pointerlockchange", this.handlePointerLockChange);
-    window.addEventListener("keydown", this.handleKeyDown, { passive: false });
+    window.addEventListener("keydown", this.handleKeyDown, {
+      passive: false,
+      capture: true,
+    });
     window.addEventListener("keyup", this.handleKeyUp);
     window.addEventListener("blur", this.resetInput);
   }
@@ -81,7 +105,7 @@ export class PlayerController {
     this.camera.detachControl();
     this.canvas.removeEventListener("click", this.requestPointerLock);
     document.removeEventListener("pointerlockchange", this.handlePointerLockChange);
-    window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("keydown", this.handleKeyDown, true);
     window.removeEventListener("keyup", this.handleKeyUp);
     window.removeEventListener("blur", this.resetInput);
     this.camera.dispose();
@@ -111,10 +135,13 @@ export class PlayerController {
 
   public respawn(spawnPoint: ArenaSpawnPoint): void {
     this.camera.position.copyFrom(
-      spawnPoint.position.add(new Vector3(0, EYE_HEIGHT, 0)),
+      spawnPoint.position.add(new Vector3(0, STANDING_EYE_HEIGHT, 0)),
     );
     this.camera.setTarget(spawnPoint.facingTarget);
     this.verticalVelocity = 0;
+    this.currentEyeHeight = STANDING_EYE_HEIGHT;
+    this.camera.ellipsoid.y = STANDING_COLLIDER_HEIGHT;
+    this.isCrouchRequested = false;
     this.isGrounded = false;
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
     this.lastFootstepAt = Number.NEGATIVE_INFINITY;
@@ -144,7 +171,11 @@ export class PlayerController {
     this.camera.checkCollisions = true;
     this.camera.applyGravity = false;
     this.camera.needMoveForGravity = false;
-    this.camera.ellipsoid = new Vector3(0.38, 0.85, 0.38);
+    this.camera.ellipsoid = new Vector3(
+      0.38,
+      STANDING_COLLIDER_HEIGHT,
+      0.38,
+    );
     this.camera.ellipsoidOffset = Vector3.Zero();
   }
 
@@ -168,8 +199,29 @@ export class PlayerController {
       return;
     }
 
+    if (
+      event.ctrlKey &&
+      (event.code === "KeyW" ||
+        event.code === "KeyA" ||
+        event.code === "KeyS" ||
+        event.code === "KeyD")
+    ) {
+      // Keep crouch + movement inside the game instead of allowing browser
+      // shortcuts such as Ctrl+W to handle the movement key.
+      event.preventDefault();
+    }
+
     if (event.code === "ShiftLeft" || event.code === "ShiftRight") {
-      this.isSprinting = true;
+      if (!this.isCrouchRequested) {
+        this.isSprinting = true;
+      }
+      return;
+    }
+
+    if (event.code === "ControlLeft") {
+      event.preventDefault();
+      this.isCrouchRequested = true;
+      this.isSprinting = false;
       return;
     }
 
@@ -182,17 +234,28 @@ export class PlayerController {
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
     if (event.code === "ShiftLeft" || event.code === "ShiftRight") {
       this.isSprinting = false;
+      return;
+    }
+
+    if (event.code === "ControlLeft") {
+      event.preventDefault();
+      this.isCrouchRequested = false;
     }
   };
 
   private readonly resetInput = (): void => {
     this.isSprinting = false;
+    this.isCrouchRequested = false;
   };
 
   private tryJump(): void {
     const now = performance.now();
 
-    if (now - this.lastJumpAt < MIN_JUMP_INTERVAL_MS || !this.isGrounded) {
+    if (
+      now - this.lastJumpAt < MIN_JUMP_INTERVAL_MS ||
+      !this.isGrounded ||
+      this.isCrouching()
+    ) {
       return;
     }
 
@@ -246,6 +309,59 @@ export class PlayerController {
     }
   }
 
+  private updateCrouch(deltaSeconds: number): void {
+    const wantsToStand = !this.isCrouchRequested;
+    const canStand = !wantsToStand || this.hasStandingClearance();
+    const targetEyeHeight = wantsToStand && canStand
+      ? STANDING_EYE_HEIGHT
+      : CROUCH_EYE_HEIGHT;
+    const previousEyeHeight = this.currentEyeHeight;
+    const maximumChange = CROUCH_TRANSITION_SPEED * deltaSeconds;
+
+    if (this.currentEyeHeight < targetEyeHeight) {
+      this.currentEyeHeight = Math.min(
+        targetEyeHeight,
+        this.currentEyeHeight + maximumChange,
+      );
+    } else if (this.currentEyeHeight > targetEyeHeight) {
+      this.currentEyeHeight = Math.max(
+        targetEyeHeight,
+        this.currentEyeHeight - maximumChange,
+      );
+    }
+
+    const crouchProgress =
+      (STANDING_EYE_HEIGHT - this.currentEyeHeight) /
+      (STANDING_EYE_HEIGHT - CROUCH_EYE_HEIGHT);
+    this.camera.ellipsoid.y =
+      STANDING_COLLIDER_HEIGHT +
+      (CROUCH_COLLIDER_HEIGHT - STANDING_COLLIDER_HEIGHT) * crouchProgress;
+
+    if (this.isGrounded) {
+      this.camera.position.y += this.currentEyeHeight - previousEyeHeight;
+    }
+  }
+
+  private hasStandingClearance(): boolean {
+    if (this.currentEyeHeight >= STANDING_EYE_HEIGHT - 0.01) {
+      return true;
+    }
+
+    this.ceilingRay.origin.copyFrom(this.camera.position);
+    this.ceilingRay.length =
+      STANDING_EYE_HEIGHT - this.currentEyeHeight + STANDING_COLLIDER_HEIGHT;
+    const hit = this.scene.pickWithRay(
+      this.ceilingRay,
+      (mesh) => this.collidableMeshes.includes(mesh),
+      false,
+    );
+    return hit?.hit !== true;
+  }
+
+  private isCrouching(): boolean {
+    return this.currentEyeHeight < STANDING_EYE_HEIGHT - 0.05;
+  }
+
   private updateFootsteps(): void {
     const deltaX = this.camera.position.x - this.lastFootstepPosition.x;
     const deltaZ = this.camera.position.z - this.lastFootstepPosition.z;
@@ -297,6 +413,6 @@ export class PlayerController {
       return null;
     }
 
-    return hit.pickedPoint.y + EYE_HEIGHT;
+    return hit.pickedPoint.y + this.currentEyeHeight;
   }
 }

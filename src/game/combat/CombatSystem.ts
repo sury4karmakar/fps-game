@@ -28,6 +28,9 @@ const SPAWN_PROTECTION_COLOR = new Color3(0.1, 0.78, 1);
 const BOT_COLLIDER_HALF_HEIGHT = 0.9;
 const BOT_EYE_HEIGHT = 1.62;
 const BOT_MUZZLE_FLASH_MS = 55;
+const SUPPLY_PICKUP_LIFETIME_MS = 15_000;
+const SUPPLY_PICKUP_AMMO = 30;
+const SUPPLY_PICKUP_RADIUS = 1.05;
 
 type CombatantId = "player" | "bot";
 export type KillOwner = CombatantId;
@@ -54,6 +57,12 @@ interface BotModel {
   readonly protectedMeshes: readonly Mesh[];
 }
 
+interface SupplyPickup {
+  readonly mesh: Mesh;
+  readonly expiresAt: number;
+  readonly createdAt: number;
+}
+
 export interface CombatHudElements {
   readonly playerHealth: HTMLElement;
   readonly playerHealthFill: HTMLElement;
@@ -73,6 +82,8 @@ export class CombatSystem {
   private readonly playerState: CombatantState;
   private readonly botState: CombatantState;
   private readonly updateObserver: Observer<Scene>;
+  private readonly supplyMaterial: StandardMaterial;
+  private readonly supplyPickups: SupplyPickup[] = [];
 
   private botDamageFlashUntil = 0;
   private botMuzzleFlashUntil = 0;
@@ -89,6 +100,7 @@ export class CombatSystem {
     },
     private readonly hud: CombatHudElements,
     private readonly reportKill: (killer: KillOwner) => void,
+    private readonly addPlayerAmmo: (amount: number) => number,
     private readonly audioSystem: AudioSystem,
   ) {
     const now = performance.now();
@@ -96,6 +108,7 @@ export class CombatSystem {
     this.playerState = this.createInitialState(now);
     this.botState = this.createInitialState(now);
     this.bot = this.createBotModel(respawnPoints.bot[0]);
+    this.supplyMaterial = this.createSupplyMaterial();
     this.updateHud(now);
 
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
@@ -107,6 +120,8 @@ export class CombatSystem {
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
     this.bot.collisionBody.dispose();
     this.bot.root.dispose(false, true);
+    this.clearSupplyPickups();
+    this.supplyMaterial.dispose();
     this.hud.damageOverlay.classList.remove("is-visible");
     this.hud.combatMessage.hidden = true;
   }
@@ -170,6 +185,7 @@ export class CombatSystem {
       this.updateBotProtectionVisual(false, performance.now());
       this.hud.damageOverlay.classList.remove("is-visible");
       this.hud.combatMessage.hidden = true;
+      this.clearSupplyPickups();
     }
   }
 
@@ -195,6 +211,7 @@ export class CombatSystem {
     this.botMuzzleFlashUntil = 0;
     this.playerDamageFlashUntil = 0;
     this.messageVisibleUntil = 0;
+    this.clearSupplyPickups();
     this.bot.muzzleFlash.setEnabled(false);
     this.hud.damageOverlay.classList.remove("is-visible");
     this.hud.combatMessage.hidden = true;
@@ -299,6 +316,7 @@ export class CombatSystem {
       this.hud.combatMessage.hidden = true;
     }
 
+    this.updateSupplyPickups(now);
   }
 
   private applyDamage(target: CombatantId, damage: number, now: number): boolean {
@@ -339,6 +357,7 @@ export class CombatSystem {
       this.showMessage("YOU WERE ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
       this.reportKill("bot");
     } else {
+      this.createSupplyPickup(this.bot.root.position, now);
       this.bot.root.setEnabled(false);
       this.bot.collisionBody.setEnabled(false);
       this.showMessage("BOT ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
@@ -382,6 +401,91 @@ export class CombatSystem {
     state.alive = true;
     state.respawnAt = 0;
     state.spawnProtectedUntil = now + SPAWN_PROTECTION_MS;
+  }
+
+  private createSupplyPickup(position: Vector3, now: number): void {
+    const mesh = CreateBox(
+      `bot-supply-pickup-${now}`,
+      { size: 0.72 },
+      this.scene,
+    );
+    mesh.position.copyFrom(position);
+    mesh.position.y += 0.42;
+    mesh.material = this.supplyMaterial;
+    mesh.isPickable = false;
+    mesh.checkCollisions = false;
+    mesh.receiveShadows = false;
+    mesh.renderOutline = true;
+    mesh.outlineColor.copyFromFloats(0.25, 1, 0.35);
+    mesh.outlineWidth = 0.06;
+    this.supplyPickups.push({
+      mesh,
+      createdAt: now,
+      expiresAt: now + SUPPLY_PICKUP_LIFETIME_MS,
+    });
+  }
+
+  private updateSupplyPickups(now: number): void {
+    const playerPosition = this.playerController.camera.position;
+
+    for (let index = this.supplyPickups.length - 1; index >= 0; index -= 1) {
+      const pickup = this.supplyPickups[index];
+
+      if (!pickup) {
+        continue;
+      }
+
+      if (now >= pickup.expiresAt) {
+        pickup.mesh.dispose();
+        this.supplyPickups.splice(index, 1);
+        continue;
+      }
+
+      const ageSeconds = (now - pickup.createdAt) / 1_000;
+      const pulse = 1 + Math.sin(ageSeconds * 6) * 0.08;
+      pickup.mesh.rotation.y +=
+        Math.min(this.scene.getEngine().getDeltaTime() / 1_000, 0.05) * 1.6;
+      pickup.mesh.scaling.setAll(pulse);
+
+      const horizontalDistance = Math.hypot(
+        pickup.mesh.position.x - playerPosition.x,
+        pickup.mesh.position.z - playerPosition.z,
+      );
+
+      if (!this.playerState.alive || horizontalDistance > SUPPLY_PICKUP_RADIUS) {
+        continue;
+      }
+
+      this.playerState.health = MAX_HEALTH;
+      const addedAmmo = this.addPlayerAmmo(SUPPLY_PICKUP_AMMO);
+      this.updateHealthHud();
+      this.showMessage(
+        addedAmmo > 0
+          ? `SUPPLY COLLECTED - FULL HEALTH +${addedAmmo} AMMO`
+          : "SUPPLY COLLECTED - FULL HEALTH - AMMO FULL",
+        now,
+        1_800,
+      );
+      pickup.mesh.dispose();
+      this.supplyPickups.splice(index, 1);
+    }
+  }
+
+  private clearSupplyPickups(): void {
+    for (const pickup of this.supplyPickups) {
+      pickup.mesh.dispose();
+    }
+
+    this.supplyPickups.length = 0;
+  }
+
+  private createSupplyMaterial(): StandardMaterial {
+    const material = new StandardMaterial("bot-supply-material", this.scene);
+    material.diffuseColor = new Color3(0.05, 0.65, 0.12);
+    material.emissiveColor = new Color3(0.08, 0.9, 0.18);
+    material.specularColor = new Color3(0.25, 0.75, 0.3);
+    material.alpha = 0.82;
+    return material;
   }
 
   private selectSafestSpawn(

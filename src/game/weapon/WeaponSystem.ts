@@ -1,11 +1,10 @@
 import type { FreeCamera } from "@babylonjs/core/Cameras/freeCamera.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { Color3 } from "@babylonjs/core/Maths/math.color.js";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
-import { CreateDecal } from "@babylonjs/core/Meshes/Builders/decalBuilder.pure.js";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.pure.js";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
@@ -16,7 +15,8 @@ import "@babylonjs/core/Shaders/default.fragment.js";
 import "@babylonjs/core/Shaders/default.vertex.js";
 
 const MAGAZINE_CAPACITY = 30;
-const STARTING_RESERVE_AMMO = 90;
+const MAX_TOTAL_AMMO = 90;
+const STARTING_RESERVE_AMMO = MAX_TOTAL_AMMO - MAGAZINE_CAPACITY;
 const FIRE_INTERVAL_MS = 100;
 const RELOAD_DURATION_MS = 1_550;
 const WEAPON_RANGE = 80;
@@ -206,6 +206,18 @@ export class WeaponSystem {
     this.impactParticles.length = 0;
     this.decals.length = 0;
     this.updateHud();
+  }
+
+  public addAmmo(amount: number): number {
+    const currentTotal = this.ammoInMagazine + this.reserveAmmo;
+    const addedAmmo = Math.min(
+      Math.max(0, Math.floor(amount)),
+      Math.max(0, MAX_TOTAL_AMMO - currentTotal),
+    );
+
+    this.reserveAmmo += addedAmmo;
+    this.updateHud();
+    return addedAmmo;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -464,7 +476,7 @@ export class WeaponSystem {
     const metadata = sourceMesh.metadata as { arenaCollision?: boolean } | null;
 
     if (metadata?.arenaCollision === true) {
-      this.createImpactDecal(sourceMesh, position, normal, createdAt);
+      this.createImpactDecal(position, normal, createdAt);
     }
   }
 
@@ -559,23 +571,32 @@ export class WeaponSystem {
   }
 
   private createImpactDecal(
-    sourceMesh: AbstractMesh,
     position: Vector3,
     normal: Vector3,
     createdAt: number,
   ): void {
-    const size = 0.14 + Math.random() * 0.08;
-    const decal = CreateDecal(`weapon-decal-${createdAt}`, sourceMesh, {
-      position: position.add(normal.scale(0.006)),
-      normal,
-      size: new Vector3(size, size, size),
-      angle: Math.random() * Math.PI * 2,
-      cullBackFaces: true,
-    });
+    const surfaceNormal = normal.normalizeToNew();
+    const decal = CreateCylinder(
+      `weapon-decal-${createdAt}`,
+      {
+        diameter: 0.075 + Math.random() * 0.015,
+        height: 0.008,
+        tessellation: 16,
+      },
+      this.scene,
+    );
+    decal.position.copyFrom(position.add(surfaceNormal.scale(0.009)));
+    decal.rotationQuaternion = Quaternion.Identity();
+    Quaternion.FromUnitVectorsToRef(
+      Vector3.Up(),
+      surfaceNormal,
+      decal.rotationQuaternion,
+    );
     decal.material = this.decalMaterial;
     decal.isPickable = false;
     decal.checkCollisions = false;
     decal.receiveShadows = false;
+    decal.renderingGroupId = 1;
     this.decals.push(decal);
 
     while (this.decals.length > MAX_DECALS) {
@@ -585,6 +606,7 @@ export class WeaponSystem {
 
   private updateHud(): void {
     this.hud.ammoCount.textContent = `${this.ammoInMagazine} / ${this.reserveAmmo}`;
+    this.hud.reloadStatus.textContent = "Reloading...";
     this.hud.reloadStatus.hidden = !this.isReloading;
   }
 
