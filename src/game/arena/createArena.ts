@@ -351,12 +351,27 @@ export function createArena(scene: Scene): ArenaBuildResult {
       facingTarget: new Vector3(0, 1.4, 4),
     },
   ];
+  const botPatrolPoints: readonly Vector3[] = [
+    new Vector3(14.8, 0, 10.5),
+    new Vector3(15.2, 0, 0),
+    new Vector3(14.8, 0, -10.5),
+    new Vector3(7.5, 0, -11.6),
+    new Vector3(0, 0, -11.8),
+    new Vector3(-7.5, 0, -11.6),
+    new Vector3(-14.8, 0, -10.5),
+    new Vector3(-15.2, 0, 0),
+    new Vector3(-14.8, 0, 10.5),
+    new Vector3(-7.5, 0, 11.6),
+    new Vector3(0, 0, 11.8),
+    new Vector3(7.5, 0, 11.6),
+  ];
 
   createSpawnPad(scene, playerSpawn, new Color3(0.15, 0.75, 1));
   createSpawnPad(scene, botSpawn, new Color3(1, 0.28, 0.18));
 
   return {
     collidableMeshes,
+    botPatrolPoints,
     spawnPoints: {
       player: playerSpawn,
       bot: botSpawn,

@@ -24,6 +24,9 @@ const STATUS_MESSAGE_MS = 1_250;
 const HEADSHOT_MULTIPLIER = 3;
 const COVER_SAFETY_BONUS = 500;
 const SPAWN_PROTECTION_COLOR = new Color3(0.1, 0.78, 1);
+const BOT_COLLIDER_HALF_HEIGHT = 0.9;
+const BOT_EYE_HEIGHT = 1.62;
+const BOT_MUZZLE_FLASH_MS = 55;
 
 type CombatantId = "player" | "bot";
 type HitZone = "body" | "head";
@@ -42,8 +45,10 @@ interface DamageableMetadata {
 
 interface BotModel {
   readonly root: TransformNode;
+  readonly collisionBody: Mesh;
   readonly bodyMaterial: StandardMaterial;
   readonly headMaterial: StandardMaterial;
+  readonly muzzleFlash: Mesh;
   readonly protectedMeshes: readonly Mesh[];
 }
 
@@ -52,6 +57,8 @@ export interface CombatHudElements {
   readonly playerHealthFill: HTMLElement;
   readonly botHealth: HTMLElement;
   readonly botHealthFill: HTMLElement;
+  readonly playerScore: HTMLElement;
+  readonly botScore: HTMLElement;
   readonly combatMessage: HTMLElement;
   readonly damageOverlay: HTMLElement;
 }
@@ -68,8 +75,11 @@ export class CombatSystem {
   private readonly updateObserver: Observer<Scene>;
 
   private botDamageFlashUntil = 0;
+  private botMuzzleFlashUntil = 0;
   private playerDamageFlashUntil = 0;
   private messageVisibleUntil = 0;
+  private playerKills = 0;
+  private botKills = 0;
 
   public constructor(
     private readonly scene: Scene,
@@ -94,6 +104,7 @@ export class CombatSystem {
 
   public dispose(): void {
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
+    this.bot.collisionBody.dispose();
     this.bot.root.dispose(false, true);
     this.hud.damageOverlay.classList.remove("is-visible");
     this.hud.combatMessage.hidden = true;
@@ -134,6 +145,66 @@ export class CombatSystem {
     return true;
   }
 
+  public get isBotAlive(): boolean {
+    return this.botState.alive;
+  }
+
+  public get isPlayerAlive(): boolean {
+    return this.playerState.alive;
+  }
+
+  public getBotPosition(): Vector3 {
+    return this.bot.root.position.clone();
+  }
+
+  public getBotEyePosition(): Vector3 {
+    return this.bot.root.position.add(new Vector3(0, BOT_EYE_HEIGHT, 0));
+  }
+
+  public getBotMuzzlePosition(): Vector3 {
+    return this.bot.muzzleFlash.getAbsolutePosition().clone();
+  }
+
+  public getBotForward(): Vector3 {
+    return new Vector3(
+      Math.sin(this.bot.root.rotation.y),
+      0,
+      Math.cos(this.bot.root.rotation.y),
+    );
+  }
+
+  public moveBot(displacement: Vector3): number {
+    if (!this.botState.alive) {
+      return 0;
+    }
+
+    const previousPosition = this.bot.collisionBody.position.clone();
+    this.bot.collisionBody.moveWithCollisions(displacement);
+    this.syncBotVisualToCollisionBody();
+    return Vector3.Distance(previousPosition, this.bot.collisionBody.position);
+  }
+
+  public turnBotToward(target: Vector3, maximumTurn: number): number {
+    const direction = target.subtract(this.bot.root.position);
+    const targetYaw = Math.atan2(direction.x, direction.z);
+    const yawDifference = this.normalizeAngle(targetYaw - this.bot.root.rotation.y);
+    const appliedTurn = Math.max(-maximumTurn, Math.min(maximumTurn, yawDifference));
+    this.bot.root.rotation.y = this.normalizeAngle(
+      this.bot.root.rotation.y + appliedTurn,
+    );
+    return Math.abs(yawDifference - appliedTurn);
+  }
+
+  public showBotMuzzleFlash(now: number): void {
+    if (!this.botState.alive) {
+      return;
+    }
+
+    this.bot.muzzleFlash.setEnabled(true);
+    this.bot.muzzleFlash.scaling.setAll(0.75 + Math.random() * 0.5);
+    this.botMuzzleFlashUntil = now + BOT_MUZZLE_FLASH_MS;
+  }
+
   private createInitialState(now: number): CombatantState {
     return {
       health: MAX_HEALTH,
@@ -161,6 +232,10 @@ export class CombatSystem {
     if (now >= this.botDamageFlashUntil) {
       this.bot.bodyMaterial.emissiveColor.copyFromFloats(0, 0, 0);
       this.bot.headMaterial.emissiveColor.copyFromFloats(0, 0, 0);
+    }
+
+    if (now >= this.botMuzzleFlashUntil) {
+      this.bot.muzzleFlash.setEnabled(false);
     }
 
     if (now >= this.playerDamageFlashUntil) {
@@ -206,12 +281,17 @@ export class CombatSystem {
     state.spawnProtectedUntil = 0;
 
     if (target === "player") {
+      this.botKills += 1;
       this.playerController.setEnabled(false);
       this.showMessage("YOU WERE ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
     } else {
+      this.playerKills += 1;
       this.bot.root.setEnabled(false);
+      this.bot.collisionBody.setEnabled(false);
       this.showMessage("BOT ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
     }
+
+    this.updateScoreHud();
   }
 
   private respawnPlayer(now: number): void {
@@ -234,7 +314,11 @@ export class CombatSystem {
 
     this.resetState(this.botState, now);
     this.bot.root.position.copyFrom(safeSpawn.position);
+    this.bot.collisionBody.position.copyFrom(
+      safeSpawn.position.add(new Vector3(0, BOT_COLLIDER_HALF_HEIGHT, 0)),
+    );
     this.faceBotToward(safeSpawn.facingTarget);
+    this.bot.collisionBody.setEnabled(true);
     this.bot.root.setEnabled(true);
     this.updateBotProtectionVisual(true, now);
     this.showMessage("BOT RESPAWNED", now);
@@ -302,6 +386,7 @@ export class CombatSystem {
 
   private updateHud(now: number): void {
     this.updateHealthHud();
+    this.updateScoreHud();
     this.updateBotProtectionVisual(
       this.botState.alive && this.isSpawnProtected(this.botState, now),
       now,
@@ -316,6 +401,11 @@ export class CombatSystem {
 
     this.hud.playerHealth.dataset.level = this.getHealthLevel(this.playerState.health);
     this.hud.botHealth.dataset.level = this.getHealthLevel(this.botState.health);
+  }
+
+  private updateScoreHud(): void {
+    this.hud.playerScore.textContent = String(this.playerKills);
+    this.hud.botScore.textContent = String(this.botKills);
   }
 
   private updateBotProtectionVisual(isProtected: boolean, now: number): void {
@@ -355,6 +445,21 @@ export class CombatSystem {
       throw new Error("Arena Strike requires an initial bot spawn point.");
     }
 
+    const collisionBody = CreateBox(
+      "bot-collision-body",
+      { width: 0.9, height: BOT_COLLIDER_HALF_HEIGHT * 2, depth: 0.9 },
+      this.scene,
+    );
+    collisionBody.position.copyFrom(
+      spawnPoint.position.add(new Vector3(0, BOT_COLLIDER_HALF_HEIGHT, 0)),
+    );
+    collisionBody.isVisible = false;
+    collisionBody.isPickable = false;
+    collisionBody.checkCollisions = true;
+    collisionBody.ellipsoid = new Vector3(0.45, BOT_COLLIDER_HALF_HEIGHT, 0.45);
+    collisionBody.ellipsoidOffset = Vector3.Zero();
+    collisionBody.metadata = { botCollision: true };
+
     const root = new TransformNode("bot-target-root", this.scene);
     root.position.copyFrom(spawnPoint.position);
     root.scaling.y = 0.85;
@@ -368,6 +473,14 @@ export class CombatSystem {
     headMaterial.diffuseColor = new Color3(0.72, 0.2, 0.08);
     headMaterial.specularColor = new Color3(0.22, 0.22, 0.22);
 
+    const weaponMaterial = new StandardMaterial("bot-weapon-material", this.scene);
+    weaponMaterial.diffuseColor = new Color3(0.035, 0.045, 0.055);
+    weaponMaterial.specularColor = new Color3(0.32, 0.35, 0.38);
+
+    const muzzleMaterial = new StandardMaterial("bot-muzzle-material", this.scene);
+    muzzleMaterial.disableLighting = true;
+    muzzleMaterial.emissiveColor = new Color3(1, 0.32, 0.04);
+
     const configureHitZone = (
       mesh: Mesh,
       material: StandardMaterial,
@@ -380,6 +493,18 @@ export class CombatSystem {
       mesh.receiveShadows = true;
       mesh.metadata = { combatantId: "bot", hitZone } satisfies DamageableMetadata;
       protectedMeshes.push(mesh);
+      return mesh;
+    };
+
+    const configureDecoration = (
+      mesh: Mesh,
+      material: StandardMaterial,
+    ): Mesh => {
+      mesh.parent = root;
+      mesh.material = material;
+      mesh.isPickable = false;
+      mesh.checkCollisions = false;
+      mesh.receiveShadows = false;
       return mesh;
     };
 
@@ -427,9 +552,49 @@ export class CombatSystem {
     );
     rightLeg.position.set(0.2, 0.34, 0);
 
+    const rifleBody = configureDecoration(
+      CreateBox(
+        "bot-rifle-body",
+        { width: 0.16, height: 0.14, depth: 0.62 },
+        this.scene,
+      ),
+      weaponMaterial,
+    );
+    rifleBody.position.set(0.42, 1.26, 0.34);
+
+    const rifleBarrel = configureDecoration(
+      CreateCylinder(
+        "bot-rifle-barrel",
+        { height: 0.42, diameter: 0.045, tessellation: 12 },
+        this.scene,
+      ),
+      weaponMaterial,
+    );
+    rifleBarrel.rotation.x = Math.PI / 2;
+    rifleBarrel.position.set(0.42, 1.26, 0.84);
+
+    const muzzleFlash = configureDecoration(
+      CreateSphere(
+        "bot-rifle-muzzle-flash",
+        { diameter: 0.13, segments: 6 },
+        this.scene,
+      ),
+      muzzleMaterial,
+    );
+    muzzleFlash.position.set(0.42, 1.26, 1.08);
+    muzzleFlash.scaling.z = 1.7;
+    muzzleFlash.setEnabled(false);
+
     this.faceBotToward(spawnPoint.facingTarget, root);
 
-    return { root, bodyMaterial, headMaterial, protectedMeshes };
+    return {
+      root,
+      collisionBody,
+      bodyMaterial,
+      headMaterial,
+      muzzleFlash,
+      protectedMeshes,
+    };
   }
 
   private faceBotToward(
@@ -438,5 +603,27 @@ export class CombatSystem {
   ): void {
     const direction = target.subtract(root.position);
     root.rotation.y = Math.atan2(direction.x, direction.z);
+  }
+
+  private syncBotVisualToCollisionBody(): void {
+    this.bot.root.position.copyFromFloats(
+      this.bot.collisionBody.position.x,
+      this.bot.collisionBody.position.y - BOT_COLLIDER_HALF_HEIGHT,
+      this.bot.collisionBody.position.z,
+    );
+  }
+
+  private normalizeAngle(angle: number): number {
+    let normalized = angle;
+
+    while (normalized > Math.PI) {
+      normalized -= Math.PI * 2;
+    }
+
+    while (normalized < -Math.PI) {
+      normalized += Math.PI * 2;
+    }
+
+    return normalized;
   }
 }

@@ -109,12 +109,12 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 6. Bot AI
 
-- [ ] Create the bot character and collision body.
-- [ ] Add patrol behavior.
-- [ ] Add player detection and pursuit behavior.
-- [ ] Add aiming and shooting behavior.
-- [ ] Add bot death, scoring, and respawning.
-- [ ] Tune bot accuracy, reaction time, movement, and difficulty.
+- [x] Create the bot character and collision body.
+- [x] Add patrol behavior.
+- [x] Add player detection and pursuit behavior.
+- [x] Add aiming and shooting behavior.
+- [x] Add bot death, scoring, and respawning.
+- [x] Tune bot accuracy, reaction time, movement, and difficulty.
 
 ### 7. Match Manager
 

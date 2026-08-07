@@ -135,6 +135,52 @@ body {
   display: none;
 }
 
+#score-panel {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  display: grid;
+  grid-template-columns: auto 30px 10px 30px auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 250px;
+  padding: 9px 15px;
+  transform: translateX(-50%);
+  border: 1px solid rgb(177 210 235 / 22%);
+  border-radius: 10px;
+  background: rgb(5 11 18 / 74%);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 24%);
+  font-variant-numeric: tabular-nums;
+}
+
+#score-panel strong {
+  color: #f7fbff;
+  font-size: 1.08rem;
+  text-align: center;
+}
+
+.score-side {
+  color: #aebfce;
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.player-score-side {
+  color: #71ceff;
+  text-align: right;
+}
+
+.bot-score-side {
+  color: #ff756b;
+}
+
+.score-divider {
+  color: #687988;
+  text-align: center;
+}
+
 #combat-health-hud {
   position: absolute;
   top: 22px;
