@@ -5,11 +5,13 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
+import { CreateDecal } from "@babylonjs/core/Meshes/Builders/decalBuilder.pure.js";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.pure.js";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
+import type { AudioSystem } from "../audio/AudioSystem";
 import "@babylonjs/core/Shaders/default.fragment.js";
 import "@babylonjs/core/Shaders/default.vertex.js";
 
@@ -24,6 +26,9 @@ const RECOIL_RECOVERY_PER_SECOND = 0.055;
 const MUZZLE_FLASH_DURATION_MS = 45;
 const HIT_MARKER_DURATION_MS = 110;
 const IMPACT_LIFETIME_MS = 360;
+const SPARK_LIFETIME_MS = 460;
+const MAX_DECALS = 42;
+const SPARKS_PER_IMPACT = 5;
 
 const RIFLE_IDLE_POSITION = new Vector3(0.31, -0.29, 0.58);
 const RIFLE_IDLE_ROTATION = new Vector3(-0.025, -0.025, 0);
@@ -46,6 +51,13 @@ interface ImpactEffect {
   readonly createdAt: number;
 }
 
+interface ImpactParticle {
+  readonly mesh: Mesh;
+  readonly velocity: Vector3;
+  readonly spin: Vector3;
+  readonly createdAt: number;
+}
+
 interface RifleModel {
   readonly root: TransformNode;
   readonly magazine: Mesh;
@@ -54,7 +66,10 @@ interface RifleModel {
 
 export class WeaponSystem {
   private readonly impactMaterial: StandardMaterial;
+  private readonly decalMaterial: StandardMaterial;
   private readonly impacts: ImpactEffect[] = [];
+  private readonly impactParticles: ImpactParticle[] = [];
+  private readonly decals: Mesh[] = [];
   private readonly muzzleFlash: Mesh;
   private readonly rifleMagazine: Mesh;
   private readonly rifleRoot: TransformNode;
@@ -82,12 +97,14 @@ export class WeaponSystem {
       damage: number,
     ) => WeaponDamageResult,
     private readonly notifyWeaponFired: () => void,
+    private readonly audioSystem: AudioSystem,
   ) {
     const rifle = this.createRifleModel();
     this.rifleRoot = rifle.root;
     this.rifleMagazine = rifle.magazine;
     this.muzzleFlash = rifle.muzzleFlash;
     this.impactMaterial = this.createImpactMaterial();
+    this.decalMaterial = this.createDecalMaterial();
 
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
       this.update();
@@ -122,8 +139,19 @@ export class WeaponSystem {
       impact.mesh.dispose();
     }
 
+    for (const particle of this.impactParticles) {
+      particle.mesh.dispose();
+    }
+
+    for (const decal of this.decals) {
+      decal.dispose();
+    }
+
     this.impacts.length = 0;
+    this.impactParticles.length = 0;
+    this.decals.length = 0;
     this.impactMaterial.dispose();
+    this.decalMaterial.dispose();
     this.rifleRoot.dispose(false, true);
   }
 
@@ -166,7 +194,17 @@ export class WeaponSystem {
       impact.mesh.dispose();
     }
 
+    for (const particle of this.impactParticles) {
+      particle.mesh.dispose();
+    }
+
+    for (const decal of this.decals) {
+      decal.dispose();
+    }
+
     this.impacts.length = 0;
+    this.impactParticles.length = 0;
+    this.decals.length = 0;
     this.updateHud();
   }
 
@@ -248,6 +286,7 @@ export class WeaponSystem {
     this.nextShotAt = now + FIRE_INTERVAL_MS;
     this.updateHud();
     this.showMuzzleFlash();
+    this.audioSystem.playPlayerGunshot();
     this.notifyWeaponFired();
     this.fireHitscan();
     this.applyRecoil();
@@ -262,11 +301,13 @@ export class WeaponSystem {
     }
 
     const normal = hit.getNormal(true) ?? ray.direction.scale(-1);
-    this.createImpactEffect(hit.pickedPoint, normal);
+    this.createImpactEffect(hit.pickedPoint, normal, hit.pickedMesh);
+    this.audioSystem.playImpact();
     const damageResult = this.resolveDamageHit(hit.pickedMesh, WEAPON_DAMAGE);
 
     if (damageResult.damageApplied) {
       this.showHitMarker(damageResult.eliminated);
+      this.audioSystem.playHitConfirmation(damageResult.eliminated);
     }
   }
 
@@ -282,6 +323,7 @@ export class WeaponSystem {
     this.isReloading = true;
     this.isTriggerHeld = false;
     this.reloadFinishesAt = now + RELOAD_DURATION_MS;
+    this.audioSystem.playReload();
     this.updateHud();
   }
 
@@ -399,9 +441,14 @@ export class WeaponSystem {
     }, HIT_MARKER_DURATION_MS);
   }
 
-  private createImpactEffect(position: Vector3, normal: Vector3): void {
+  private createImpactEffect(
+    position: Vector3,
+    normal: Vector3,
+    sourceMesh: AbstractMesh,
+  ): void {
+    const createdAt = performance.now();
     const impact = CreateSphere(
-      `weapon-impact-${performance.now()}`,
+      `weapon-impact-${createdAt}`,
       { diameter: 0.075, segments: 6 },
       this.scene,
     );
@@ -411,10 +458,22 @@ export class WeaponSystem {
     impact.checkCollisions = false;
     impact.renderingGroupId = 1;
 
-    this.impacts.push({ mesh: impact, createdAt: performance.now() });
+    this.impacts.push({ mesh: impact, createdAt });
+    this.createImpactParticles(position, normal, createdAt);
+
+    const metadata = sourceMesh.metadata as { arenaCollision?: boolean } | null;
+
+    if (metadata?.arenaCollision === true) {
+      this.createImpactDecal(sourceMesh, position, normal, createdAt);
+    }
   }
 
   private updateImpacts(now: number): void {
+    const deltaSeconds = Math.min(
+      this.scene.getEngine().getDeltaTime() / 1_000,
+      0.05,
+    );
+
     for (let index = this.impacts.length - 1; index >= 0; index -= 1) {
       const impact = this.impacts[index];
 
@@ -432,6 +491,95 @@ export class WeaponSystem {
 
       impact.mesh.scaling.setAll(1 + progress * 2.4);
       impact.mesh.visibility = 1 - progress;
+    }
+
+    for (let index = this.impactParticles.length - 1; index >= 0; index -= 1) {
+      const particle = this.impactParticles[index];
+
+      if (!particle) {
+        continue;
+      }
+
+      const progress = (now - particle.createdAt) / SPARK_LIFETIME_MS;
+
+      if (progress >= 1) {
+        particle.mesh.dispose();
+        this.impactParticles.splice(index, 1);
+        continue;
+      }
+
+      particle.velocity.y -= 5.2 * deltaSeconds;
+      particle.mesh.position.addInPlace(particle.velocity.scale(deltaSeconds));
+      particle.mesh.rotation.addInPlace(particle.spin.scale(deltaSeconds));
+      particle.mesh.visibility = 1 - progress;
+      particle.mesh.scaling.setAll(Math.max(0.15, 1 - progress * 0.8));
+    }
+  }
+
+  private createImpactParticles(
+    position: Vector3,
+    normal: Vector3,
+    createdAt: number,
+  ): void {
+    const surfaceNormal = normal.normalizeToNew();
+
+    for (let index = 0; index < SPARKS_PER_IMPACT; index += 1) {
+      const spark = CreateBox(
+        `weapon-spark-${createdAt}-${index}`,
+        { size: 0.035 },
+        this.scene,
+      );
+      const randomDirection = new Vector3(
+        Math.random() * 2 - 1,
+        Math.random() * 1.4,
+        Math.random() * 2 - 1,
+      );
+      const direction = surfaceNormal
+        .scale(0.8 + Math.random() * 0.55)
+        .add(randomDirection.scale(0.65))
+        .normalize();
+
+      spark.position.copyFrom(position.add(surfaceNormal.scale(0.035)));
+      spark.scaling.z = 2.2;
+      spark.material = this.impactMaterial;
+      spark.isPickable = false;
+      spark.checkCollisions = false;
+      spark.renderingGroupId = 1;
+      this.impactParticles.push({
+        mesh: spark,
+        velocity: direction.scale(1.6 + Math.random() * 2.4),
+        spin: new Vector3(
+          Math.random() * 8,
+          Math.random() * 8,
+          Math.random() * 8,
+        ),
+        createdAt,
+      });
+    }
+  }
+
+  private createImpactDecal(
+    sourceMesh: AbstractMesh,
+    position: Vector3,
+    normal: Vector3,
+    createdAt: number,
+  ): void {
+    const size = 0.14 + Math.random() * 0.08;
+    const decal = CreateDecal(`weapon-decal-${createdAt}`, sourceMesh, {
+      position: position.add(normal.scale(0.006)),
+      normal,
+      size: new Vector3(size, size, size),
+      angle: Math.random() * Math.PI * 2,
+      cullBackFaces: true,
+    });
+    decal.material = this.decalMaterial;
+    decal.isPickable = false;
+    decal.checkCollisions = false;
+    decal.receiveShadows = false;
+    this.decals.push(decal);
+
+    while (this.decals.length > MAX_DECALS) {
+      this.decals.shift()?.dispose();
     }
   }
 
@@ -556,6 +704,16 @@ export class WeaponSystem {
     const material = new StandardMaterial("weapon-impact-material", this.scene);
     material.disableLighting = true;
     material.emissiveColor = new Color3(1, 0.58, 0.12);
+    return material;
+  }
+
+  private createDecalMaterial(): StandardMaterial {
+    const material = new StandardMaterial("weapon-decal-material", this.scene);
+    material.diffuseColor = new Color3(0.018, 0.014, 0.012);
+    material.emissiveColor = new Color3(0.01, 0.006, 0.003);
+    material.specularColor = Color3.Black();
+    material.alpha = 0.82;
+    material.zOffset = -2;
     return material;
   }
 }

@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import { createScene } from "./createScene";
+import type { AudioHudElements, AudioSystem } from "./audio/AudioSystem";
 import type { BotAI } from "./bot/BotAI";
 import type { CombatHudElements, CombatSystem } from "./combat/CombatSystem";
 import type { MatchHudElements, MatchManager } from "./match/MatchManager";
@@ -9,6 +10,7 @@ import type { WeaponHudElements, WeaponSystem } from "./weapon/WeaponSystem";
 
 export class GameApplication {
   private engine: Engine | null = null;
+  private audioSystem: AudioSystem | null = null;
   private scene: Scene | null = null;
   private playerController: PlayerController | null = null;
   private combatSystem: CombatSystem | null = null;
@@ -25,6 +27,7 @@ export class GameApplication {
     private readonly weaponHud: WeaponHudElements,
     private readonly combatHud: CombatHudElements,
     private readonly matchHud: MatchHudElements,
+    private readonly audioHud: AudioHudElements,
     private readonly matchDurationMs?: number,
   ) {}
 
@@ -45,9 +48,11 @@ export class GameApplication {
       this.weaponHud,
       this.combatHud,
       this.matchHud,
+      this.audioHud,
       this.matchDurationMs,
     );
     this.scene = gameScene.scene;
+    this.audioSystem = gameScene.audioSystem;
     this.playerController = gameScene.playerController;
     this.combatSystem = gameScene.combatSystem;
     this.botAI = gameScene.botAI;
@@ -70,9 +75,11 @@ export class GameApplication {
     this.botAI?.dispose();
     this.combatSystem?.dispose();
     this.playerController?.dispose();
+    this.audioSystem?.dispose();
     this.scene?.dispose();
     this.engine?.dispose();
     this.playerController = null;
+    this.audioSystem = null;
     this.combatSystem = null;
     this.botAI = null;
     this.weaponSystem = null;

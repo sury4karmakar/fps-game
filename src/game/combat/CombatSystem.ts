@@ -14,6 +14,7 @@ import type { Scene } from "@babylonjs/core/scene.js";
 import "@babylonjs/core/Shaders/outline.fragment.js";
 import "@babylonjs/core/Shaders/outline.vertex.js";
 import type { ArenaSpawnPoint } from "../arena/arenaTypes";
+import type { AudioSystem } from "../audio/AudioSystem";
 import type { PlayerController } from "../player/PlayerController";
 
 const MAX_HEALTH = 100;
@@ -88,6 +89,7 @@ export class CombatSystem {
     },
     private readonly hud: CombatHudElements,
     private readonly reportKill: (killer: KillOwner) => void,
+    private readonly audioSystem: AudioSystem,
   ) {
     const now = performance.now();
 
@@ -249,6 +251,7 @@ export class CombatSystem {
     this.bot.muzzleFlash.setEnabled(true);
     this.bot.muzzleFlash.scaling.setAll(0.75 + Math.random() * 0.5);
     this.botMuzzleFlashUntil = now + BOT_MUZZLE_FLASH_MS;
+    this.audioSystem.playBotGunshot();
   }
 
   private createInitialState(now: number): CombatantState {
@@ -305,6 +308,7 @@ export class CombatSystem {
     if (target === "player") {
       this.playerDamageFlashUntil = now + DAMAGE_FLASH_MS;
       this.hud.damageOverlay.classList.add("is-visible");
+      this.audioSystem.playPlayerDamage();
     } else {
       this.botDamageFlashUntil = now + DAMAGE_FLASH_MS;
       this.bot.bodyMaterial.emissiveColor.copyFromFloats(0.8, 0.04, 0.02);

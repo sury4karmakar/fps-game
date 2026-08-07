@@ -15,6 +15,9 @@ const GROUND_CHECK_DISTANCE = 6;
 const GROUND_SNAP_DISTANCE = 0.12;
 const MAX_STEP_HEIGHT = 0.24;
 const MIN_JUMP_INTERVAL_MS = 180;
+const WALK_FOOTSTEP_DISTANCE = 1.45;
+const SPRINT_FOOTSTEP_DISTANCE = 1.15;
+const MIN_FOOTSTEP_INTERVAL_MS = 210;
 
 const KEY_W = 87;
 const KEY_A = 65;
@@ -30,10 +33,13 @@ export class PlayerController {
     GROUND_CHECK_DISTANCE,
   );
   private readonly movementObserver: Observer<Scene>;
+  private readonly lastFootstepPosition = Vector3.Zero();
+  private footstepDistance = 0;
   private isEnabled = true;
   private isSprinting = false;
   private isGrounded = false;
   private lastJumpAt = Number.NEGATIVE_INFINITY;
+  private lastFootstepAt = Number.NEGATIVE_INFINITY;
   private verticalVelocity = 0;
 
   public constructor(
@@ -41,6 +47,7 @@ export class PlayerController {
     private readonly canvas: HTMLCanvasElement,
     spawnPoint: ArenaSpawnPoint,
     private readonly collidableMeshes: readonly AbstractMesh[],
+    private readonly playFootstep: (sprinting: boolean) => void,
   ) {
     this.camera = new FreeCamera(
       "player-camera",
@@ -49,6 +56,7 @@ export class PlayerController {
     );
     this.camera.setTarget(spawnPoint.facingTarget);
     this.configureCamera();
+    this.lastFootstepPosition.copyFrom(this.camera.position);
 
     this.movementObserver = scene.onAfterAnimationsObservable.add(() => {
       if (!this.isEnabled) {
@@ -58,6 +66,7 @@ export class PlayerController {
 
       this.camera.speed = this.isSprinting ? SPRINT_SPEED : WALK_SPEED;
       this.updateVerticalMotion();
+      this.updateFootsteps();
     });
 
     this.canvas.addEventListener("click", this.requestPointerLock);
@@ -108,6 +117,9 @@ export class PlayerController {
     this.verticalVelocity = 0;
     this.isGrounded = false;
     this.lastJumpAt = Number.NEGATIVE_INFINITY;
+    this.lastFootstepAt = Number.NEGATIVE_INFINITY;
+    this.footstepDistance = 0;
+    this.lastFootstepPosition.copyFrom(this.camera.position);
     this.setEnabled(true);
   }
 
@@ -231,6 +243,39 @@ export class PlayerController {
       this.camera.position.y = landingHeight;
       this.verticalVelocity = 0;
       this.isGrounded = true;
+    }
+  }
+
+  private updateFootsteps(): void {
+    const deltaX = this.camera.position.x - this.lastFootstepPosition.x;
+    const deltaZ = this.camera.position.z - this.lastFootstepPosition.z;
+    const horizontalDistance = Math.hypot(deltaX, deltaZ);
+    this.lastFootstepPosition.copyFrom(this.camera.position);
+
+    if (
+      !this.isGrounded ||
+      document.pointerLockElement !== this.canvas ||
+      horizontalDistance > 1
+    ) {
+      if (horizontalDistance > 1) {
+        this.footstepDistance = 0;
+      }
+      return;
+    }
+
+    this.footstepDistance += horizontalDistance;
+    const stepDistance = this.isSprinting
+      ? SPRINT_FOOTSTEP_DISTANCE
+      : WALK_FOOTSTEP_DISTANCE;
+    const now = performance.now();
+
+    if (
+      this.footstepDistance >= stepDistance &&
+      now - this.lastFootstepAt >= MIN_FOOTSTEP_INTERVAL_MS
+    ) {
+      this.footstepDistance %= stepDistance;
+      this.lastFootstepAt = now;
+      this.playFootstep(this.isSprinting);
     }
   }
 

@@ -1,5 +1,6 @@
 import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
+import type { AudioHudElements } from "./game/audio/AudioSystem";
 import type { CombatHudElements } from "./game/combat/CombatSystem";
 import type { MatchHudElements } from "./game/match/MatchManager";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
@@ -47,6 +48,10 @@ const matchHud: MatchHudElements = {
   finalPlayerScore: requireElement<HTMLElement>("#match-final-player-score"),
   finalBotScore: requireElement<HTMLElement>("#match-final-bot-score"),
   actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
+};
+const audioHud: AudioHudElements = {
+  toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),
+  status: requireElement<HTMLElement>("#audio-status"),
 };
 
 let application: GameApplication | null = null;
@@ -100,6 +105,7 @@ async function launchGame(): Promise<void> {
       weaponHud,
       combatHud,
       matchHud,
+      audioHud,
       getDevelopmentMatchDurationMs(),
     );
     await application.start();

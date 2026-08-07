@@ -135,12 +135,14 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 
 ### 9. Audio, Effects, and Quality
 
-- [ ] Add gunshot, reload, impact, and UI sounds.
-- [ ] Add footsteps and player damage cues.
-- [ ] Add simple particles and decals.
+- [x] Add gunshot, reload, impact, and UI sounds.
+- [x] Add footsteps and player damage cues.
+- [x] Add simple particles and decals.
 - [ ] Replace temporary assets where needed.
-- [ ] Test the full five-minute match flow.
-- [ ] Test performance and the production build in supported browsers.
+- [x] Test the full five-minute match flow.
+- [x] Test performance and the production build in supported browsers.
+
+Temporary asset replacement is intentionally deferred for a later phase.
 
 ## Explicitly Out of Scope
 

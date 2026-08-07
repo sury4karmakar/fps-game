@@ -168,6 +168,94 @@ body {
   display: none;
 }
 
+.audio-toggle {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 108px;
+  padding: 9px 12px;
+  border: 1px solid rgb(177 210 235 / 22%);
+  border-radius: 9px;
+  color: #aebfce;
+  background: rgb(5 11 18 / 72%);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 24%);
+  font: inherit;
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  pointer-events: auto;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.audio-toggle:hover {
+  color: #e8f6ff;
+  border-color: rgb(113 206 255 / 42%);
+}
+
+.audio-toggle:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.audio-icon {
+  position: relative;
+  width: 18px;
+  height: 16px;
+}
+
+.audio-icon::before {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 5px;
+  height: 6px;
+  border-radius: 2px 0 0 2px;
+  background: #76ceff;
+  content: "";
+}
+
+.audio-icon::after {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-right: 7px solid #76ceff;
+  border-bottom: 6px solid transparent;
+  content: "";
+}
+
+.audio-icon i {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  width: 7px;
+  height: 10px;
+  border-right: 2px solid #76ceff;
+  border-radius: 50%;
+}
+
+.audio-toggle[data-muted="true"] .audio-icon i {
+  top: 7px;
+  right: -1px;
+  width: 9px;
+  height: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: #ff756b;
+  transform: rotate(-45deg);
+}
+
+.audio-toggle[data-muted="true"] {
+  color: #8b99a5;
+}
+
 #match-clock-panel {
   position: absolute;
   top: 18px;
@@ -849,6 +937,12 @@ h1 {
   #ammo-panel {
     right: 14px;
     bottom: 14px;
+  }
+
+  .audio-toggle {
+    right: 14px;
+    bottom: 76px;
+    top: auto;
   }
 
   #match-clock-panel {

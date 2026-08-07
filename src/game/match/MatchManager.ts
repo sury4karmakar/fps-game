@@ -1,6 +1,7 @@
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import type { BotAI } from "../bot/BotAI";
+import type { AudioSystem } from "../audio/AudioSystem";
 import type { CombatSystem, KillOwner } from "../combat/CombatSystem";
 import type { PlayerController } from "../player/PlayerController";
 import type { WeaponSystem } from "../weapon/WeaponSystem";
@@ -41,6 +42,7 @@ export class MatchManager {
     private readonly combatSystem: CombatSystem,
     private readonly botAI: BotAI,
     private readonly weaponSystem: WeaponSystem,
+    private readonly audioSystem: AudioSystem,
     private readonly hud: MatchHudElements,
     private readonly matchDurationMs = FIVE_MINUTES_MS,
   ) {
@@ -115,6 +117,7 @@ export class MatchManager {
 
     this.combatSystem.resetForMatch(now);
     this.weaponSystem.resetForMatch();
+    this.audioSystem.playMatchStart();
     this.setGameplayEnabled(true);
     this.updateScoreHud();
     this.updateTimerHud(true);
@@ -144,6 +147,7 @@ export class MatchManager {
 
     const result = this.getResult();
     const resultCopy = this.getResultCopy(result);
+    this.audioSystem.playMatchEnd(result);
     this.hud.state.textContent = "FINISHED";
     this.hud.state.dataset.state = "finished";
     this.hud.overlay.dataset.state = "finished";
