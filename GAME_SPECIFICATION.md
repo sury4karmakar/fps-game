@@ -40,6 +40,57 @@ Arena Strike is a compact, skill-focused first-person shooter that runs in a mod
 | Assets | Blender + glTF/GLB | Create and export the arena, weapon, and bot models |
 | Audio | Babylon.js audio | Gunfire, reload, hit, footsteps, and match UI feedback |
 
+## Project Folders and Files
+
+The source code is organized by gameplay responsibility. `src/main.ts` starts the game, `src/game/createScene.ts` connects all systems, and each subfolder under `src/game/` owns one part of the match.
+
+```text
+fps-game/
+├─ src/                         Browser application source
+│  ├─ game/                     Babylon.js game systems
+│  │  ├─ arena/                 Arena geometry, lighting, and spawn/navigation data
+│  │  ├─ audio/                 Procedural sound and sound-control UI
+│  │  ├─ bot/                   Computer opponent behaviour
+│  │  ├─ combat/                Health, damage, deaths, respawns, and pickups
+│  │  ├─ match/                 Match lifecycle, timer, scores, and result screen
+│  │  ├─ player/                First-person camera and movement controls
+│  │  └─ weapon/                Rifle firing, ammunition, hit effects, and reloads
+│  ├─ main.ts                   Browser entry point and DOM/HUD element wiring
+│  ├─ styles.css                Complete visual styling for the HUD, menus, and responsive layout
+│  └─ vite-env.d.ts             Vite TypeScript environment declarations
+├─ index.html                   Canvas and all static HUD/menu markup
+├─ package.json                 NPM scripts and direct project dependencies
+├─ package-lock.json            Locked, reproducible dependency versions
+├─ tsconfig.json                TypeScript compiler and strictness settings
+├─ vite.config.ts               Vite build configuration
+├─ GAME_SPECIFICATION.md        Product requirements, delivery checklist, and this project map
+├─ README.md                    Repository landing page (currently empty)
+├─ .gitignore                   Excludes dependencies, build output, caches, and logs from Git
+├─ node_modules/                Installed NPM packages; generated locally and not committed
+└─ dist/                        Generated production build; recreated by `npm run build`
+```
+
+| Path | Exact responsibility |
+|---|---|
+| `src/main.ts` | Imports global styles, finds every required HTML element, creates HUD-element contracts, starts/retries `GameApplication`, supports the development-only `?matchSeconds=` timer override, and reports startup/runtime errors. |
+| `src/styles.css` | Styles the full-screen game canvas, crosshair, health/ammo/score/timer HUD, overlays, menu controls, audio toggle, animations, and small-screen/reduced-motion layouts. |
+| `src/vite-env.d.ts` | Makes Vite-provided TypeScript types, including `import.meta.env`, available to source files. |
+| `src/game/GameApplication.ts` | Creates the Babylon engine, calls `createScene`, starts the render loop, responds to browser resizes, and disposes every game system cleanly. |
+| `src/game/createScene.ts` | Composition root: creates the arena, audio, player, combat, bot, weapon, and match systems; connects their callbacks; returns the finished scene and systems to `GameApplication`. |
+| `src/game/arena/createArena.ts` | Builds the playable 36×28 arena: floor, walls, cover, crates, platforms, ramps, collision metadata, spawn pads, player/bot respawn points, and bot patrol/navigation waypoints. |
+| `src/game/arena/createEnvironment.ts` | Configures the sky sphere, fog, ambient and directional lighting, and filtered shadow generator used by the arena. |
+| `src/game/arena/arenaTypes.ts` | Defines the typed data returned by arena construction: spawn positions/facing, collidable meshes, and bot route points. |
+| `src/game/player/PlayerController.ts` | Runs the FPS camera and player input: pointer lock, WASD movement, mouse look, sprint, crouch, jump, gravity, collision, ground/ceiling checks, respawning, and footsteps. |
+| `src/game/weapon/WeaponSystem.ts` | Owns the player rifle: input to fire, hitscan raycasts, 30-round magazine/90-round total ammo limit, reload timing, recoil, muzzle flash, impact decals/sparks, hit markers, and weapon HUD updates. |
+| `src/game/combat/CombatSystem.ts` | Tracks player and bot health; resolves body/headshot damage; handles deaths, protected respawns, safe-spawn selection, bot visuals/fire feedback, damage HUD/messages, and bot-kill supply pickups. |
+| `src/game/bot/BotAI.ts` | Controls the bot’s patrol, detection, hearing, pursuit, search, navigation, obstacle/stuck recovery, aiming, movement, firing cadence, accuracy, and temporary combat decisions. |
+| `src/game/match/MatchManager.ts` | Controls waiting/playing/finished match states, the five-minute countdown, kill scoring, system enable/disable state, start/restart UI actions, and final player-win/bot-win/draw result. |
+| `src/game/audio/AudioSystem.ts` | Generates and plays Web Audio-based gunfire, reload, impact, footsteps, damage, kill, pickup, and UI sounds; also implements mute control and its HUD state. |
+| `index.html` | Provides the Babylon canvas plus the semantic DOM markup and IDs consumed by `main.ts`: combat HUD, score/timer, audio control, match start/end overlay, and loading/error overlay. |
+| `package.json` | Declares the `dev`, `build`, `preview`, and `typecheck` commands, plus Babylon.js, TypeScript, and Vite dependencies. |
+| `tsconfig.json` | Enables strict, no-output TypeScript checking for ES2022 browser code in `src/`. |
+| `vite.config.ts` | Sets Vite’s production chunk-size warning threshold to 1400 kB. |
+
 ## Game Modules
 
 | Module | Responsibility | First-version deliverables |
@@ -141,7 +192,6 @@ Update an item from `[ ]` to `[x]` when it is completed and verified.
 - [x] Add gunshot, reload, impact, and UI sounds.
 - [x] Add footsteps and player damage cues.
 - [x] Add simple particles and decals.
-- [ ] Replace temporary assets where needed.
 - [x] Test the full five-minute match flow.
 - [x] Test performance and the production build in supported browsers.
 
