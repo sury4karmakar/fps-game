@@ -27,7 +27,9 @@ const MUZZLE_FLASH_DURATION_MS = 45;
 const HIT_MARKER_DURATION_MS = 110;
 const IMPACT_LIFETIME_MS = 360;
 const SPARK_LIFETIME_MS = 460;
-const MAX_DECALS = 42;
+const DECAL_LIFETIME_MS = 7_000;
+const MAX_DECALS = 20;
+const MIN_DECAL_SPACING = 0.14;
 const SPARKS_PER_IMPACT = 5;
 
 const RIFLE_IDLE_POSITION = new Vector3(0.31, -0.29, 0.58);
@@ -58,6 +60,13 @@ interface ImpactParticle {
   readonly createdAt: number;
 }
 
+interface ImpactDecal {
+  readonly mesh: Mesh;
+  readonly sourceMesh: AbstractMesh;
+  readonly position: Vector3;
+  readonly createdAt: number;
+}
+
 interface RifleModel {
   readonly root: TransformNode;
   readonly magazine: Mesh;
@@ -69,7 +78,7 @@ export class WeaponSystem {
   private readonly decalMaterial: StandardMaterial;
   private readonly impacts: ImpactEffect[] = [];
   private readonly impactParticles: ImpactParticle[] = [];
-  private readonly decals: Mesh[] = [];
+  private readonly decals: ImpactDecal[] = [];
   private readonly muzzleFlash: Mesh;
   private readonly rifleMagazine: Mesh;
   private readonly rifleRoot: TransformNode;
@@ -144,7 +153,7 @@ export class WeaponSystem {
     }
 
     for (const decal of this.decals) {
-      decal.dispose();
+      decal.mesh.dispose();
     }
 
     this.impacts.length = 0;
@@ -199,7 +208,7 @@ export class WeaponSystem {
     }
 
     for (const decal of this.decals) {
-      decal.dispose();
+      decal.mesh.dispose();
     }
 
     this.impacts.length = 0;
@@ -476,7 +485,7 @@ export class WeaponSystem {
     const metadata = sourceMesh.metadata as { arenaCollision?: boolean } | null;
 
     if (metadata?.arenaCollision === true) {
-      this.createImpactDecal(position, normal, createdAt);
+      this.createImpactDecal(position, normal, sourceMesh, createdAt);
     }
   }
 
@@ -526,6 +535,26 @@ export class WeaponSystem {
       particle.mesh.visibility = 1 - progress;
       particle.mesh.scaling.setAll(Math.max(0.15, 1 - progress * 0.8));
     }
+
+    for (let index = this.decals.length - 1; index >= 0; index -= 1) {
+      const decal = this.decals[index];
+
+      if (!decal) {
+        continue;
+      }
+
+      const progress = (now - decal.createdAt) / DECAL_LIFETIME_MS;
+
+      if (progress >= 1) {
+        decal.mesh.dispose();
+        this.decals.splice(index, 1);
+        continue;
+      }
+
+      // Keep the mark fully readable at first, then clear it away before the
+      // next firefight can turn a surface into a field of overlapping dots.
+      decal.mesh.visibility = progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4;
+    }
   }
 
   private createImpactParticles(
@@ -573,9 +602,22 @@ export class WeaponSystem {
   private createImpactDecal(
     position: Vector3,
     normal: Vector3,
+    sourceMesh: AbstractMesh,
     createdAt: number,
   ): void {
     const surfaceNormal = normal.normalizeToNew();
+
+    const overlapsExistingDecal = this.decals.some(
+      (decal) =>
+        decal.sourceMesh === sourceMesh &&
+        Vector3.DistanceSquared(decal.position, position) <
+          MIN_DECAL_SPACING * MIN_DECAL_SPACING,
+    );
+
+    if (overlapsExistingDecal) {
+      return;
+    }
+
     const decal = CreateCylinder(
       `weapon-decal-${createdAt}`,
       {
@@ -585,7 +627,7 @@ export class WeaponSystem {
       },
       this.scene,
     );
-    decal.position.copyFrom(position.add(surfaceNormal.scale(0.009)));
+    decal.position.copyFrom(position.add(surfaceNormal.scale(0.004)));
     decal.rotationQuaternion = Quaternion.Identity();
     Quaternion.FromUnitVectorsToRef(
       Vector3.Up(),
@@ -596,11 +638,19 @@ export class WeaponSystem {
     decal.isPickable = false;
     decal.checkCollisions = false;
     decal.receiveShadows = false;
-    decal.renderingGroupId = 1;
-    this.decals.push(decal);
+    // Decals must render with the arena so the scene depth buffer hides them
+    // behind cover. Group 1 is reserved for foreground effects/the rifle and
+    // is rendered after the world, making marks visible through boxes.
+    decal.renderingGroupId = 0;
+    this.decals.push({
+      mesh: decal,
+      sourceMesh,
+      position: position.clone(),
+      createdAt,
+    });
 
     while (this.decals.length > MAX_DECALS) {
-      this.decals.shift()?.dispose();
+      this.decals.shift()?.mesh.dispose();
     }
   }
 
@@ -735,7 +785,6 @@ export class WeaponSystem {
     material.emissiveColor = new Color3(0.01, 0.006, 0.003);
     material.specularColor = Color3.Black();
     material.alpha = 0.82;
-    material.zOffset = -2;
     return material;
   }
 }
