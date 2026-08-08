@@ -114,89 +114,6 @@ fps-game/
 5. **Round rules:** Timer, scores, winner/draw logic, HUD, and restart screen.
 6. **Polish:** Replace placeholders, tune balance, add sound and visual effects, then test performance.
 
-## Task Progression
-
-Update an item from `[ ]` to `[x]` when it is completed and verified.
-
-### 1. Project Foundation
-
-- [x] Create the Vite and TypeScript project.
-- [x] Install and configure Babylon.js.
-- [x] Create the game canvas, engine, scene, and render loop.
-- [x] Add browser resize handling.
-- [x] Add initial loading and error states.
-
-### 2. Arena
-
-- [x] Create the arena floor and boundary walls.
-- [x] Add cover objects, crates, and ramps.
-- [x] Add lighting, shadows, and a basic sky/environment.
-- [x] Configure collision meshes.
-- [x] Add safe player and bot spawn points.
-
-### 3. Player Controller
-
-- [x] Add pointer-lock mouse controls.
-- [x] Add WASD movement and mouse look.
-- [x] Add sprinting and jumping.
-- [x] Add hold-to-crouch movement with Left Ctrl.
-- [x] Add gravity and world collision.
-- [x] Tune movement speed, jump height, and camera feel.
-
-### 4. Weapon System
-
-- [x] Add a placeholder first-person rifle.
-- [x] Add left-click hitscan shooting with raycasts.
-- [x] Add fire rate and ammunition limits.
-- [x] Cap total ammunition at 90 rounds.
-- [x] Add reload behavior.
-- [x] Add recoil, muzzle flash, impact effects, and hit markers.
-
-### 5. Damage, Health, and Respawning
-
-- [x] Add health to the player and bot.
-- [x] Apply weapon damage on confirmed hits.
-- [x] Add damage feedback.
-- [x] Add death handling and a short respawn delay.
-- [x] Add brief spawn protection and safe respawn selection.
-- [x] Drop a 15-second health and ammunition pickup when the bot is eliminated.
-
-### 6. Bot AI
-
-- [x] Create the bot character and collision body.
-- [x] Add patrol behavior.
-- [x] Add player detection and pursuit behavior.
-- [x] Add aiming and shooting behavior.
-- [x] Add bot death, scoring, and respawning.
-- [x] Tune bot accuracy, reaction time, movement, and difficulty.
-
-### 7. Match Manager
-
-- [x] Add match states: waiting, playing, and finished.
-- [x] Add the five-minute countdown timer.
-- [x] Track player and bot kills.
-- [x] Stop combat when the timer reaches zero.
-- [x] Determine Player Win, Bot Win, or Draw.
-- [x] Add match restart behavior.
-
-### 8. HUD and Menus
-
-- [x] Create the start screen with controls.
-- [x] Add the crosshair.
-- [x] Display player health and ammunition.
-- [x] Display player kills, bot kills, and remaining time.
-- [x] Create the final result and restart screen.
-
-### 9. Audio, Effects, and Quality
-
-- [x] Add gunshot, reload, impact, and UI sounds.
-- [x] Add footsteps and player damage cues.
-- [x] Add simple particles and decals.
-- [x] Test the full five-minute match flow.
-- [x] Test performance and the production build in supported browsers.
-
-Temporary asset replacement is intentionally deferred for a later phase.
-
 ## Explicitly Out of Scope
 
 - Online multiplayer, matchmaking, accounts, servers, anti-cheat, and network prediction.
@@ -209,17 +126,30 @@ A player can open the browser game, start a five-minute match, move safely throu
 
 ## Next Phases - Later, Not Part of the Current Build
 
-The following work is intentionally deferred until the first playable version is complete and stable.
+The following work is intentionally deferred until Phase 2 is complete and stable.
 
 ### Phase 2: Expanded Single-Player Game
 
-- [ ] Add multiple bot difficulty levels.
-- [ ] Add improved navigation and tactical bot behavior.
-- [ ] Add additional weapons and weapon switching.
-- [ ] Add a second arena and map selection.
-- [ ] Add additional pickup types such as armor.
-- [ ] Add better character, weapon, and reload animations.
-- [ ] Add settings for controls, mouse sensitivity, audio, and graphics.
+The approved Must-do implementation plan is maintained module by module in [`docs/PHASE2.md`](docs/PHASE2.md). The following items are additional Phase 2 candidates and exclusions; they are not part of the Must-do release checklist.
+
+#### Should do
+
+- [ ] Add a match setup screen for map and difficulty selection.
+- [ ] Move weapon, map, and difficulty values into reusable typed configuration definitions.
+- [ ] Add map-specific bot routes, cover positions, and spawn validation tools.
+- [ ] Add equipped-weapon, reserve-ammunition, armor, map, and difficulty information to the HUD.
+- [ ] Add distinct audio for each weapon and pickup.
+- [ ] Add basic accessibility improvements for new controls and effects.
+- [ ] Add developer test controls for maps, weapons, bot difficulties, and pickups.
+
+#### Do not do
+
+- Online multiplayer, accounts, matchmaking, servers, anti-cheat, or network prediction.
+- Teams, buy phases, economies, ranked systems, or additional game modes.
+- More than two arenas, more than three total weapons, or multiple simultaneous bots.
+- Persistent progression, unlocks, leaderboards, or saved match history.
+- High-fidelity asset replacement or extensive realistic character animation.
+- Mobile or touch-control support.
 
 ### Phase 3: Game Polish and Distribution
 

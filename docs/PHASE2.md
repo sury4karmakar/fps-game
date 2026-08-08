@@ -12,11 +12,11 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 1. Phase 2 Foundation and Data
 
-- [ ] Define typed weapon configuration data for all Phase 2 weapons.
-- [ ] Define typed difficulty presets for Easy, Normal, and Hard.
-- [ ] Define typed map metadata and map-selection state.
-- [ ] Preserve the Phase 1 match flow and timer override while adding the new configuration paths.
-- [ ] Add a Phase 2 regression checklist for maps, weapons, difficulty, pickups, settings, and complete matches.
+- [x] Define typed weapon configuration data for all Phase 2 weapons.
+- [x] Define typed difficulty presets for Easy, Normal, and Hard.
+- [x] Define typed map metadata and map-selection state.
+- [x] Preserve the Phase 1 match flow and timer override while adding the new configuration paths.
+- [x] Add a Phase 2 regression checklist for maps, weapons, difficulty, pickups, settings, and complete matches.
 
 ### 2. Bot Difficulty
 
