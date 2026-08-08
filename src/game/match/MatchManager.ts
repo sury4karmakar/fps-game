@@ -3,6 +3,11 @@ import type { Scene } from "@babylonjs/core/scene.js";
 import type { BotAI } from "../bot/BotAI";
 import type { AudioSystem } from "../audio/AudioSystem";
 import type { CombatSystem, KillOwner } from "../combat/CombatSystem";
+import {
+  getBotDifficultyDefinition,
+  isBotDifficultyId,
+  type BotDifficultyId,
+} from "../config/gameConfig";
 import type { PlayerController } from "../player/PlayerController";
 import type { WeaponSystem } from "../weapon/WeaponSystem";
 
@@ -24,6 +29,8 @@ export interface MatchHudElements {
   readonly finalPlayerScore: HTMLElement;
   readonly finalBotScore: HTMLElement;
   readonly actionButton: HTMLButtonElement;
+  readonly difficulty: HTMLElement;
+  readonly difficultySelect: HTMLSelectElement;
 }
 
 export class MatchManager {
@@ -35,6 +42,7 @@ export class MatchManager {
   private matchEndsAt = 0;
   private remainingMs: number;
   private displayedSecond = -1;
+  private selectedDifficultyId: BotDifficultyId;
 
   public constructor(
     private readonly scene: Scene,
@@ -45,13 +53,22 @@ export class MatchManager {
     private readonly audioSystem: AudioSystem,
     private readonly hud: MatchHudElements,
     private readonly matchDurationMs = FIVE_MINUTES_MS,
+    initialDifficultyId: BotDifficultyId = "normal",
+    private readonly onDifficultyChanged: (difficultyId: BotDifficultyId) => void =
+      () => undefined,
   ) {
     if (!Number.isFinite(matchDurationMs) || matchDurationMs <= 0) {
       throw new Error("Match duration must be a positive number.");
     }
 
     this.remainingMs = matchDurationMs;
+    this.selectedDifficultyId = initialDifficultyId;
+    this.hud.difficultySelect.value = initialDifficultyId;
     this.hud.actionButton.addEventListener("click", this.handleAction);
+    this.hud.difficultySelect.addEventListener(
+      "change",
+      this.handleDifficultyChange,
+    );
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
       this.update();
     });
@@ -61,6 +78,10 @@ export class MatchManager {
   public dispose(): void {
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
     this.hud.actionButton.removeEventListener("click", this.handleAction);
+    this.hud.difficultySelect.removeEventListener(
+      "change",
+      this.handleDifficultyChange,
+    );
   }
 
   public recordKill(killer: KillOwner): void {
@@ -87,6 +108,20 @@ export class MatchManager {
     }
   };
 
+  private readonly handleDifficultyChange = (): void => {
+    const difficultyId = this.hud.difficultySelect.value;
+
+    if (!isBotDifficultyId(difficultyId) || this.matchState === "playing") {
+      this.hud.difficultySelect.value = this.selectedDifficultyId;
+      return;
+    }
+
+    this.selectedDifficultyId = difficultyId;
+    this.botAI.setDifficulty(difficultyId);
+    this.onDifficultyChanged(difficultyId);
+    this.updateDifficultyHud();
+  };
+
   private enterWaitingState(): void {
     this.matchState = "waiting";
     this.playerKills = 0;
@@ -104,6 +139,8 @@ export class MatchManager {
       "Score more eliminations than the bot before the clock reaches zero.";
     this.hud.finalScore.hidden = true;
     this.hud.actionButton.textContent = "Start Match";
+    this.hud.difficultySelect.disabled = false;
+    this.updateDifficultyHud();
   }
 
   private startMatch(): void {
@@ -124,6 +161,7 @@ export class MatchManager {
     this.hud.state.textContent = "LIVE";
     this.hud.state.dataset.state = "playing";
     this.hud.overlay.dataset.state = "playing";
+    this.hud.difficultySelect.disabled = true;
   }
 
   private update(): void {
@@ -159,6 +197,7 @@ export class MatchManager {
     this.hud.finalBotScore.textContent = String(this.botKills);
     this.hud.finalScore.hidden = false;
     this.hud.actionButton.textContent = "Play Again";
+    this.hud.difficultySelect.disabled = false;
   }
 
   private setGameplayEnabled(enabled: boolean): void {
@@ -207,6 +246,14 @@ export class MatchManager {
   private updateScoreHud(): void {
     this.hud.playerScore.textContent = String(this.playerKills);
     this.hud.botScore.textContent = String(this.botKills);
+  }
+
+  private updateDifficultyHud(): void {
+    const difficulty = getBotDifficultyDefinition(this.selectedDifficultyId);
+    this.hud.difficulty.textContent = difficulty.displayName;
+    this.hud.difficulty.dataset.difficulty = difficulty.id;
+    this.hud.difficultySelect.value = difficulty.id;
+    this.hud.eyebrow.textContent = `Five-minute duel · ${difficulty.displayName} bot`;
   }
 
   private updateTimerHud(force = false): void {

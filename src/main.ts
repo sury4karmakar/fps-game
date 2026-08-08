@@ -49,6 +49,8 @@ const matchHud: MatchHudElements = {
   finalPlayerScore: requireElement<HTMLElement>("#match-final-player-score"),
   finalBotScore: requireElement<HTMLElement>("#match-final-bot-score"),
   actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
+  difficulty: requireElement<HTMLElement>("#match-difficulty"),
+  difficultySelect: requireElement<HTMLSelectElement>("#match-difficulty-select"),
 };
 const audioHud: AudioHudElements = {
   toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),

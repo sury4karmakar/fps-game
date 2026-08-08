@@ -73,6 +73,7 @@ export function createScene(
     combatSystem,
     arena.botPatrolPoints,
     arena.botNavigationPoints,
+    matchConfiguration.botDifficultyId,
   );
   weaponSystem = new WeaponSystem(
     scene,
@@ -92,6 +93,16 @@ export function createScene(
     audioSystem,
     matchHud,
     matchDurationMs,
+    matchConfiguration.botDifficultyId,
+    (botDifficultyId) => {
+      scene.metadata = {
+        ...(scene.metadata as Record<string, unknown> | null),
+        matchConfiguration: {
+          ...matchConfiguration,
+          botDifficultyId,
+        },
+      };
+    },
   );
 
   return {

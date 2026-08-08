@@ -20,11 +20,11 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 2. Bot Difficulty
 
-- [ ] Add Easy, Normal, and Hard bot difficulty presets.
-- [ ] Tune reaction time, aim accuracy, fire cadence, detection range, movement speed, and decision timing per difficulty.
-- [ ] Keep difficulty changes fair and data-driven rather than relying on hidden damage or health advantages.
-- [ ] Display the selected difficulty in the match setup and HUD where appropriate.
-- [ ] Verify that all difficulties can complete a full five-minute match without invalid states.
+- [x] Add Easy, Normal, and Hard bot difficulty presets.
+- [x] Tune reaction time, aim accuracy, fire cadence, detection range, movement speed, and decision timing per difficulty.
+- [x] Keep difficulty changes fair and data-driven rather than relying on hidden damage or health advantages.
+- [x] Display the selected difficulty in the match setup and HUD where appropriate.
+- [x] Verify that all difficulties can complete a full five-minute match without invalid states.
 
 ### 3. Bot Navigation and Tactical Behavior
 

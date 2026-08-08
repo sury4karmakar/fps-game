@@ -82,6 +82,7 @@ export interface BotDifficultyDefinition {
   readonly movementSpeedMultiplier: number;
   readonly fireIntervalMultiplier: number;
   readonly detectionRangeMultiplier: number;
+  readonly combatDecisionIntervalMultiplier: number;
 }
 
 export const DEFAULT_BOT_DIFFICULTY_ID: BotDifficultyId = "normal";
@@ -98,6 +99,7 @@ export const BOT_DIFFICULTY_DEFINITIONS: Readonly<
     movementSpeedMultiplier: 0.86,
     fireIntervalMultiplier: 1.22,
     detectionRangeMultiplier: 0.82,
+    combatDecisionIntervalMultiplier: 1.28,
   },
   normal: {
     id: "normal",
@@ -108,6 +110,7 @@ export const BOT_DIFFICULTY_DEFINITIONS: Readonly<
     movementSpeedMultiplier: 1,
     fireIntervalMultiplier: 1,
     detectionRangeMultiplier: 1,
+    combatDecisionIntervalMultiplier: 1,
   },
   hard: {
     id: "hard",
@@ -118,6 +121,7 @@ export const BOT_DIFFICULTY_DEFINITIONS: Readonly<
     movementSpeedMultiplier: 1.1,
     fireIntervalMultiplier: 0.84,
     detectionRangeMultiplier: 1.12,
+    combatDecisionIntervalMultiplier: 0.8,
   },
 };
 
@@ -163,6 +167,16 @@ export const DEFAULT_MATCH_CONFIGURATION: Readonly<MatchConfiguration> = {
   selectedMapId: DEFAULT_ARENA_MAP_ID,
   botDifficultyId: DEFAULT_BOT_DIFFICULTY_ID,
 };
+
+export function isBotDifficultyId(value: string): value is BotDifficultyId {
+  return value in BOT_DIFFICULTY_DEFINITIONS;
+}
+
+export function getBotDifficultyDefinition(
+  difficultyId: BotDifficultyId,
+): BotDifficultyDefinition {
+  return BOT_DIFFICULTY_DEFINITIONS[difficultyId];
+}
 
 export function getArenaMapDefinition(mapId: ArenaMapId): ArenaMapDefinition {
   return ARENA_MAP_DEFINITIONS[mapId];
