@@ -3,6 +3,12 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import type { CombatSystem } from "../combat/CombatSystem";
+import {
+  DEFAULT_BOT_DIFFICULTY_ID,
+  getBotDifficultyDefinition,
+  type BotDifficultyDefinition,
+  type BotDifficultyId,
+} from "../config/gameConfig";
 import type { PlayerController } from "../player/PlayerController";
 
 const PATROL_SPEED_MIN = 1.8;
@@ -19,8 +25,6 @@ const PREFERRED_MINIMUM_RANGE = 6;
 const PLAYER_MEMORY_MS = 3_600;
 const SEARCH_DURATION_MIN_MS = 1_200;
 const SEARCH_DURATION_MAX_MS = 2_200;
-const REACTION_TIME_MIN_MS = 500;
-const REACTION_TIME_MAX_MS = 850;
 const CLOSE_FIRE_INTERVAL_MS = 650;
 const MEDIUM_FIRE_INTERVAL_MS = 760;
 const LONG_FIRE_INTERVAL_MS = 920;
@@ -85,6 +89,7 @@ export class BotAI {
   private hadVisualContact = false;
   private isEnabled = true;
   private wasBotAlive = true;
+  private difficulty: BotDifficultyDefinition;
 
   private route: Vector3[] = [];
   private routeIndex = 0;
@@ -102,11 +107,13 @@ export class BotAI {
     private readonly combatSystem: CombatSystem,
     private readonly patrolPoints: readonly Vector3[],
     private readonly navigationPoints: readonly Vector3[],
+    difficultyId: BotDifficultyId = DEFAULT_BOT_DIFFICULTY_ID,
   ) {
     if (patrolPoints.length === 0 || navigationPoints.length === 0) {
       throw new Error("Arena Strike requires bot patrol and navigation points.");
     }
 
+    this.difficulty = getBotDifficultyDefinition(difficultyId);
     this.navigationGraph = this.buildNavigationGraph();
     this.chooseNextPatrolTarget(performance.now());
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
@@ -129,6 +136,15 @@ export class BotAI {
       this.wasBotAlive = this.combatSystem.isBotAlive;
       this.resetAfterRespawn(performance.now());
     }
+  }
+
+  public setDifficulty(difficultyId: BotDifficultyId): void {
+    this.difficulty = getBotDifficultyDefinition(difficultyId);
+    this.nextCombatDecisionAt = performance.now();
+  }
+
+  public get difficultyId(): BotDifficultyId {
+    return this.difficulty.id;
   }
 
   public notifyPlayerShot(playerPosition: Vector3): void {
@@ -188,7 +204,11 @@ export class BotAI {
     if (canSeePlayer) {
       if (!this.hadVisualContact) {
         this.reactionReadyAt =
-          now + this.randomBetween(REACTION_TIME_MIN_MS, REACTION_TIME_MAX_MS);
+          now +
+          this.randomBetween(
+            this.difficulty.reactionTimeMs.minimum,
+            this.difficulty.reactionTimeMs.maximum,
+          );
       }
 
       this.hadVisualContact = true;
@@ -265,7 +285,7 @@ export class BotAI {
 
     this.navigateTo(
       this.lastKnownPlayerPosition,
-      PURSUIT_SPEED,
+      this.getMovementSpeed(PURSUIT_SPEED),
       now,
       deltaSeconds,
     );
@@ -340,7 +360,7 @@ export class BotAI {
       if (distanceToPlayer > 9) {
         this.moveInDirection(
           directionToPlayer,
-          COMBAT_MOVE_SPEED,
+          this.getMovementSpeed(COMBAT_MOVE_SPEED),
           deltaSeconds,
           now,
           false,
@@ -353,7 +373,7 @@ export class BotAI {
       if (distanceToPlayer < 22) {
         this.moveInDirection(
           directionToPlayer.scale(-1),
-          COMBAT_MOVE_SPEED,
+          this.getMovementSpeed(COMBAT_MOVE_SPEED),
           deltaSeconds,
           now,
           false,
@@ -370,7 +390,7 @@ export class BotAI {
     );
     this.moveInDirection(
       strafeDirection,
-      COMBAT_MOVE_SPEED,
+      this.getMovementSpeed(COMBAT_MOVE_SPEED),
       deltaSeconds,
       now,
       false,
@@ -401,7 +421,11 @@ export class BotAI {
     }
 
     this.nextCombatDecisionAt =
-      now + this.randomBetween(COMBAT_DECISION_MIN_MS, COMBAT_DECISION_MAX_MS);
+      now +
+      this.randomBetween(
+        COMBAT_DECISION_MIN_MS,
+        COMBAT_DECISION_MAX_MS,
+      ) * this.difficulty.combatDecisionIntervalMultiplier;
   }
 
   private navigateTo(
@@ -776,11 +800,17 @@ export class BotAI {
   }
 
   private canDetectPlayer(playerPosition: Vector3, distance: number): boolean {
-    if (distance > DETECTION_RANGE || !this.hasClearLineOfSight(playerPosition)) {
+    if (
+      distance > DETECTION_RANGE * this.difficulty.detectionRangeMultiplier ||
+      !this.hasClearLineOfSight(playerPosition)
+    ) {
       return false;
     }
 
-    if (distance <= CLOSE_DETECTION_RANGE) {
+    if (
+      distance <=
+      CLOSE_DETECTION_RANGE * this.difficulty.detectionRangeMultiplier
+    ) {
       return true;
     }
 
@@ -817,7 +847,8 @@ export class BotAI {
     const idealDirection = target.subtract(origin).normalize();
     const right = Vector3.Cross(Vector3.Up(), idealDirection).normalize();
     const shotUp = Vector3.Cross(idealDirection, right).normalize();
-    const spread = this.getAimSpread(distanceToPlayer);
+    const spread =
+      this.getAimSpread(distanceToPlayer) * this.difficulty.aimSpreadMultiplier;
     const horizontalSpread = (Math.random() + Math.random() - 1) * spread;
     const verticalSpread = (Math.random() + Math.random() - 1) * spread;
     const shotDirection = idealDirection
@@ -828,7 +859,8 @@ export class BotAI {
     this.combatSystem.showBotMuzzleFlash(now);
     this.nextShotAt =
       now +
-      this.getFireInterval(distanceToPlayer) +
+      this.getFireInterval(distanceToPlayer) *
+        this.difficulty.fireIntervalMultiplier +
       this.randomBetween(-FIRE_INTERVAL_JITTER_MS, FIRE_INTERVAL_JITTER_MS);
 
     const toPlayer = target.subtract(origin);
@@ -939,7 +971,9 @@ export class BotAI {
     ];
 
     this.patrolTargetIndex = selected?.index ?? 0;
-    this.patrolSpeed = this.randomBetween(PATROL_SPEED_MIN, PATROL_SPEED_MAX);
+    this.patrolSpeed = this.getMovementSpeed(
+      this.randomBetween(PATROL_SPEED_MIN, PATROL_SPEED_MAX),
+    );
     this.patrolPauseUntil = now;
     this.clearRoute();
   }
@@ -974,7 +1008,7 @@ export class BotAI {
     this.patrolPauseUntil = 0;
     this.lastContactAt = Number.NEGATIVE_INFINITY;
     this.reactionReadyAt = Number.POSITIVE_INFINITY;
-    this.nextShotAt = now + REACTION_TIME_MIN_MS;
+    this.nextShotAt = now + this.difficulty.reactionTimeMs.minimum;
     this.hadVisualContact = false;
     this.stuckForSeconds = 0;
     this.recoveryUntil = 0;
@@ -1000,6 +1034,10 @@ export class BotAI {
 
   private randomBetween(minimum: number, maximum: number): number {
     return minimum + Math.random() * (maximum - minimum);
+  }
+
+  private getMovementSpeed(baseSpeed: number): number {
+    return baseSpeed * this.difficulty.movementSpeedMultiplier;
   }
 
   private horizontalDistance(first: Vector3, second: Vector3): number {

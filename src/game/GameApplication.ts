@@ -4,9 +4,18 @@ import { createScene } from "./createScene";
 import type { AudioHudElements, AudioSystem } from "./audio/AudioSystem";
 import type { BotAI } from "./bot/BotAI";
 import type { CombatHudElements, CombatSystem } from "./combat/CombatSystem";
+import {
+  DEFAULT_MATCH_CONFIGURATION,
+  type MatchConfiguration,
+} from "./config/gameConfig";
 import type { MatchHudElements, MatchManager } from "./match/MatchManager";
 import type { PlayerController } from "./player/PlayerController";
 import type { WeaponHudElements, WeaponSystem } from "./weapon/WeaponSystem";
+
+export interface GameApplicationOptions {
+  readonly matchDurationMs?: number;
+  readonly matchConfiguration?: MatchConfiguration;
+}
 
 export class GameApplication {
   private engine: Engine | null = null;
@@ -28,8 +37,15 @@ export class GameApplication {
     private readonly combatHud: CombatHudElements,
     private readonly matchHud: MatchHudElements,
     private readonly audioHud: AudioHudElements,
-    private readonly matchDurationMs?: number,
-  ) {}
+    options: GameApplicationOptions = {},
+  ) {
+    this.matchDurationMs = options.matchDurationMs;
+    this.matchConfiguration =
+      options.matchConfiguration ?? DEFAULT_MATCH_CONFIGURATION;
+  }
+
+  private readonly matchDurationMs: number | undefined;
+  private readonly matchConfiguration: MatchConfiguration;
 
   public async start(): Promise<void> {
     this.engine = new Engine(
@@ -50,6 +66,7 @@ export class GameApplication {
       this.matchHud,
       this.audioHud,
       this.matchDurationMs,
+      this.matchConfiguration,
     );
     this.scene = gameScene.scene;
     this.audioSystem = gameScene.audioSystem;

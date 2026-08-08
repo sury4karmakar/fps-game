@@ -2,6 +2,7 @@ import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
 import type { AudioHudElements } from "./game/audio/AudioSystem";
 import type { CombatHudElements } from "./game/combat/CombatSystem";
+import { DEFAULT_MATCH_CONFIGURATION } from "./game/config/gameConfig";
 import type { MatchHudElements } from "./game/match/MatchManager";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
 
@@ -48,6 +49,8 @@ const matchHud: MatchHudElements = {
   finalPlayerScore: requireElement<HTMLElement>("#match-final-player-score"),
   finalBotScore: requireElement<HTMLElement>("#match-final-bot-score"),
   actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
+  difficulty: requireElement<HTMLElement>("#match-difficulty"),
+  difficultySelect: requireElement<HTMLSelectElement>("#match-difficulty-select"),
 };
 const audioHud: AudioHudElements = {
   toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),
@@ -106,7 +109,10 @@ async function launchGame(): Promise<void> {
       combatHud,
       matchHud,
       audioHud,
-      getDevelopmentMatchDurationMs(),
+      {
+        matchDurationMs: getDevelopmentMatchDurationMs(),
+        matchConfiguration: DEFAULT_MATCH_CONFIGURATION,
+      },
     );
     await application.start();
     setStatus("ready", "Ready", "The game foundation is running.");

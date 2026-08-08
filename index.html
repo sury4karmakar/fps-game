@@ -25,6 +25,7 @@
         <section id="match-clock-panel" aria-label="Match status and remaining time">
           <span id="match-state" data-state="waiting">Waiting</span>
           <strong id="match-timer">05:00</strong>
+          <span id="match-difficulty" data-difficulty="normal">Normal</span>
         </section>
 
         <section id="score-panel" aria-label="Elimination score">
@@ -96,6 +97,15 @@
               <span>Wins the match</span>
             </div>
           </section>
+
+          <label class="difficulty-select start-only" for="match-difficulty-select">
+            <span>Bot difficulty</span>
+            <select id="match-difficulty-select" name="match-difficulty">
+              <option value="easy">Easy</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
 
           <section class="controls-panel start-only" aria-label="Game controls">
             <h3>Controls</h3>
