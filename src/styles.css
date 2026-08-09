@@ -493,6 +493,35 @@ body {
   letter-spacing: 0.04em;
 }
 
+.weapon-role {
+  max-width: 190px;
+  margin-top: 3px;
+  color: #94a9b9;
+  font-size: 0.58rem;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.weapon-slots {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  margin-top: 8px;
+}
+
+.weapon-slot {
+  color: #748898;
+  font-size: 0.53rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.weapon-slot.is-equipped {
+  color: #8bd8ff;
+}
+
 #reload-status {
   margin-top: 3px;
   color: #ffb55f;

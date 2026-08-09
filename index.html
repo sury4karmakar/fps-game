@@ -59,9 +59,11 @@
         </section>
 
         <div id="ammo-panel">
-          <span class="ammo-label">Rifle ammunition</span>
+          <span id="weapon-name" class="ammo-label">Assault Rifle</span>
           <span id="ammo-count">30 / 90</span>
+          <span id="weapon-role" class="weapon-role">Reliable automatic mid-range weapon.</span>
           <span id="reload-status" hidden>Reloading...</span>
+          <div id="weapon-slots" class="weapon-slots" aria-label="Weapon slots"></div>
         </div>
       </section>
 
@@ -71,7 +73,7 @@
       </button>
 
       <p id="controls-hint">
-        Click to aim | WASD move | Shift sprint | Left Ctrl crouch | Space jump | Left click fire | R reload | Esc unlock
+        Click to aim | WASD move | Shift sprint | Left Ctrl crouch | Space jump | Left click fire | 1–3 / Wheel switch | R reload | Esc unlock
       </p>
 
       <section id="match-overlay" class="match-overlay" data-state="waiting" aria-live="polite">
@@ -116,6 +118,7 @@
               <div><span class="control-keys"><kbd>Shift</kbd></span><span>Sprint</span></div>
               <div><span class="control-keys"><kbd>Space</kbd></span><span>Jump</span></div>
               <div><span class="control-keys"><kbd>R</kbd></span><span>Reload</span></div>
+              <div><span class="control-keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span>Switch weapon</span></div>
               <div><span class="control-keys"><kbd>Left Ctrl</kbd></span><span>Crouch</span></div>
               <div><span class="control-keys"><kbd>Esc</kbd></span><span>Unlock mouse</span></div>
             </div>

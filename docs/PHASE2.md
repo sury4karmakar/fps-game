@@ -37,12 +37,12 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 4. Weapon System
 
-- [ ] Add two additional weapons with clearly different combat roles.
-- [ ] Define damage, fire rate, magazine size, reserve ammunition, reload time, range, spread, and recoil for every weapon.
-- [ ] Add weapon switching through number keys and mouse wheel input.
-- [ ] Track magazine and reserve ammunition independently for each weapon.
-- [ ] Add equipped-weapon state and weapon information to the HUD.
-- [ ] Balance weapon damage and availability against all three bot difficulties.
+- [x] Add two additional weapons with clearly different combat roles.
+- [x] Define damage, fire rate, magazine size, reserve ammunition, reload time, range, spread, and recoil for every weapon.
+- [x] Add weapon switching through number keys and mouse wheel input.
+- [x] Track magazine and reserve ammunition independently for each weapon.
+- [x] Add equipped-weapon state and weapon information to the HUD.
+- [x] Balance weapon damage and availability against all three bot difficulties.
 
 ### 5. Second Arena
 

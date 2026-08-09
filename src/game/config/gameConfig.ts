@@ -8,6 +8,7 @@ export interface WeaponDefinition {
   readonly role: string;
   readonly fireMode: WeaponFireMode;
   readonly magazineCapacity: number;
+  readonly startingReserveAmmo: number;
   readonly maxTotalAmmo: number;
   readonly damagePerProjectile: number;
   readonly projectilesPerShot: number;
@@ -27,6 +28,7 @@ export const WEAPON_DEFINITIONS: Readonly<Record<WeaponId, WeaponDefinition>> = 
     role: "Reliable automatic mid-range weapon.",
     fireMode: "automatic",
     magazineCapacity: 30,
+    startingReserveAmmo: 60,
     maxTotalAmmo: 90,
     damagePerProjectile: 34,
     projectilesPerShot: 1,
@@ -42,6 +44,7 @@ export const WEAPON_DEFINITIONS: Readonly<Record<WeaponId, WeaponDefinition>> = 
     role: "High-damage close-range weapon with pellet spread.",
     fireMode: "semi-automatic",
     magazineCapacity: 8,
+    startingReserveAmmo: 32,
     maxTotalAmmo: 40,
     damagePerProjectile: 12,
     projectilesPerShot: 8,
@@ -57,6 +60,7 @@ export const WEAPON_DEFINITIONS: Readonly<Record<WeaponId, WeaponDefinition>> = 
     role: "Accurate long-range weapon with deliberate follow-up shots.",
     fireMode: "semi-automatic",
     magazineCapacity: 12,
+    startingReserveAmmo: 36,
     maxTotalAmmo: 48,
     damagePerProjectile: 58,
     projectilesPerShot: 1,

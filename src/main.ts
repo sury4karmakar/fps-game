@@ -24,6 +24,9 @@ const statusTitle = requireElement<HTMLElement>("#status-title");
 const statusMessage = requireElement<HTMLElement>("#status-message");
 const retryButton = requireElement<HTMLButtonElement>("#retry-button");
 const weaponHud: WeaponHudElements = {
+  weaponName: requireElement<HTMLElement>("#weapon-name"),
+  weaponRole: requireElement<HTMLElement>("#weapon-role"),
+  weaponSlots: requireElement<HTMLElement>("#weapon-slots"),
   ammoCount: requireElement<HTMLElement>("#ammo-count"),
   reloadStatus: requireElement<HTMLElement>("#reload-status"),
   hitMarker: requireElement<HTMLElement>("#hit-marker"),
