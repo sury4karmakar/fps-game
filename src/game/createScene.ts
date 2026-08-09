@@ -73,6 +73,7 @@ export function createScene(
     combatSystem,
     arena.botPatrolPoints,
     arena.botNavigationPoints,
+    arena.botCoverPoints,
     matchConfiguration.botDifficultyId,
   );
   weaponSystem = new WeaponSystem(

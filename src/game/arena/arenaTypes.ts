@@ -7,10 +7,18 @@ export interface ArenaSpawnPoint {
   readonly facingTarget: Vector3;
 }
 
+export interface ArenaCoverPoint {
+  readonly id: string;
+  readonly coverPosition: Vector3;
+  readonly peekPosition: Vector3;
+}
+
 export interface ArenaBuildResult {
+  readonly id: string;
   readonly collidableMeshes: readonly AbstractMesh[];
   readonly botPatrolPoints: readonly Vector3[];
   readonly botNavigationPoints: readonly Vector3[];
+  readonly botCoverPoints: readonly ArenaCoverPoint[];
   readonly spawnPoints: {
     readonly player: ArenaSpawnPoint;
     readonly bot: ArenaSpawnPoint;

@@ -29,10 +29,10 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 ### 3. Bot Navigation and Tactical Behavior
 
 - [ ] Add reliable navigation support for both arenas.
-- [ ] Add line-of-sight validation for pursuit, attack, and search behavior.
-- [ ] Improve cover-aware movement and tactical positioning.
-- [ ] Improve hearing, last-known-position search, and combat decision behavior.
-- [ ] Improve obstacle, stuck, and route-recovery handling.
+- [x] Add line-of-sight validation for pursuit, attack, and search behavior.
+- [x] Improve cover-aware movement and tactical positioning.
+- [x] Improve hearing, last-known-position search, and combat decision behavior.
+- [x] Improve obstacle, stuck, and route-recovery handling.
 - [ ] Author and validate map-specific patrol routes, cover positions, and safe respawn points.
 
 ### 4. Weapon System

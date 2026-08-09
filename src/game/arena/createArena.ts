@@ -9,12 +9,93 @@ import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import { createEnvironment } from "./createEnvironment";
-import type { ArenaBuildResult, ArenaSpawnPoint } from "./arenaTypes";
+import type {
+  ArenaBuildResult,
+  ArenaCoverPoint,
+  ArenaSpawnPoint,
+} from "./arenaTypes";
 
 const ARENA_WIDTH = 36;
 const ARENA_DEPTH = 28;
 const WALL_HEIGHT = 5;
 const WALL_THICKNESS = 0.8;
+
+function assertArenaPoint(
+  label: string,
+  point: Vector3,
+  halfWidth: number,
+  halfDepth: number,
+): void {
+  if (
+    !Number.isFinite(point.x) ||
+    !Number.isFinite(point.y) ||
+    !Number.isFinite(point.z) ||
+    Math.abs(point.x) >= halfWidth - WALL_THICKNESS ||
+    Math.abs(point.z) >= halfDepth - WALL_THICKNESS
+  ) {
+    throw new Error(`Arena Strike has an invalid ${label} point.`);
+  }
+}
+
+function validateArenaTacticalData(
+  playerRespawns: readonly ArenaSpawnPoint[],
+  botRespawns: readonly ArenaSpawnPoint[],
+  patrolPoints: readonly Vector3[],
+  navigationPoints: readonly Vector3[],
+  coverPoints: readonly ArenaCoverPoint[],
+  halfWidth: number,
+  halfDepth: number,
+): void {
+  if (
+    playerRespawns.length < 2 ||
+    botRespawns.length < 2 ||
+    patrolPoints.length === 0 ||
+    navigationPoints.length === 0 ||
+    coverPoints.length === 0
+  ) {
+    throw new Error("Arena Strike requires complete spawn and tactical point data.");
+  }
+
+  const spawnIds = new Set<string>();
+
+  for (const spawn of [...playerRespawns, ...botRespawns]) {
+    if (spawnIds.has(spawn.id)) {
+      throw new Error(`Arena Strike has a duplicate spawn id: ${spawn.id}.`);
+    }
+
+    spawnIds.add(spawn.id);
+    assertArenaPoint(`spawn (${spawn.id})`, spawn.position, halfWidth, halfDepth);
+  }
+
+  patrolPoints.forEach((point, index) => {
+    assertArenaPoint(`patrol (${index})`, point, halfWidth, halfDepth);
+  });
+  navigationPoints.forEach((point, index) => {
+    assertArenaPoint(`navigation (${index})`, point, halfWidth, halfDepth);
+  });
+
+  const coverIds = new Set<string>();
+
+  for (const coverPoint of coverPoints) {
+    if (coverIds.has(coverPoint.id)) {
+      throw new Error(`Arena Strike has a duplicate cover id: ${coverPoint.id}.`);
+    }
+
+    coverIds.add(coverPoint.id);
+    assertArenaPoint(
+      `cover (${coverPoint.id})`,
+      coverPoint.coverPosition,
+      halfWidth,
+      halfDepth,
+    );
+    assertArenaPoint(
+      `cover peek (${coverPoint.id})`,
+      coverPoint.peekPosition,
+      halfWidth,
+      halfDepth,
+    );
+  }
+}
 
 interface BoxSpec {
   readonly name: string;
@@ -363,6 +444,38 @@ export function createArena(scene: Scene): ArenaBuildResult {
     new Vector3(-14, 0, -10),
     new Vector3(-2, 0, -9),
   ];
+  const botCoverPoints: readonly ArenaCoverPoint[] = [
+    {
+      id: "central-cover-west",
+      coverPosition: new Vector3(-4.2, 0, 0),
+      peekPosition: new Vector3(-4.25, 0, -1.65),
+    },
+    {
+      id: "central-cover-east",
+      coverPosition: new Vector3(4.2, 0, 0),
+      peekPosition: new Vector3(4.25, 0, 1.65),
+    },
+    {
+      id: "west-cover-north",
+      coverPosition: new Vector3(-8.45, 0, 3.2),
+      peekPosition: new Vector3(-8.45, 0, 4.65),
+    },
+    {
+      id: "east-cover-south",
+      coverPosition: new Vector3(8.45, 0, -3.2),
+      peekPosition: new Vector3(8.45, 0, -4.65),
+    },
+    {
+      id: "north-crates",
+      coverPosition: new Vector3(-10.4, 0, 2.15),
+      peekPosition: new Vector3(-9.2, 0, 2.15),
+    },
+    {
+      id: "south-crates",
+      coverPosition: new Vector3(10.4, 0, -2.15),
+      peekPosition: new Vector3(9.2, 0, -2.15),
+    },
+  ];
   const botNavigationPoints: readonly Vector3[] = [
     ...botPatrolPoints,
     new Vector3(15, 0, 0),
@@ -387,15 +500,31 @@ export function createArena(scene: Scene): ArenaBuildResult {
     new Vector3(-6, 0, 6),
     new Vector3(0, 0, 6),
     new Vector3(5, 0, 6),
+    ...botCoverPoints.flatMap((coverPoint) => [
+      coverPoint.coverPosition,
+      coverPoint.peekPosition,
+    ]),
   ];
+
+  validateArenaTacticalData(
+    playerRespawnPoints,
+    botRespawnPoints,
+    botPatrolPoints,
+    botNavigationPoints,
+    botCoverPoints,
+    halfWidth,
+    halfDepth,
+  );
 
   createSpawnPad(scene, playerSpawn, new Color3(0.15, 0.75, 1));
   createSpawnPad(scene, botSpawn, new Color3(1, 0.28, 0.18));
 
   return {
+    id: "training-yard",
     collidableMeshes,
     botPatrolPoints,
     botNavigationPoints,
+    botCoverPoints,
     spawnPoints: {
       player: playerSpawn,
       bot: botSpawn,

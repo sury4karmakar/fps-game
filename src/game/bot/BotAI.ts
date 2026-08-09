@@ -2,6 +2,7 @@ import { Ray } from "@babylonjs/core/Culling/ray.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
+import type { ArenaCoverPoint } from "../arena/arenaTypes";
 import type { CombatSystem } from "../combat/CombatSystem";
 import {
   DEFAULT_BOT_DIFFICULTY_ID,
@@ -25,6 +26,10 @@ const PREFERRED_MINIMUM_RANGE = 6;
 const PLAYER_MEMORY_MS = 3_600;
 const SEARCH_DURATION_MIN_MS = 1_200;
 const SEARCH_DURATION_MAX_MS = 2_200;
+const SEARCH_REPOSITION_MIN_MS = 650;
+const SEARCH_REPOSITION_MAX_MS = 1_100;
+const TACTICAL_COVER_MIN_RANGE = 5;
+const TACTICAL_COVER_MAX_RANGE = 24;
 const CLOSE_FIRE_INTERVAL_MS = 650;
 const MEDIUM_FIRE_INTERVAL_MS = 760;
 const LONG_FIRE_INTERVAL_MS = 920;
@@ -60,7 +65,8 @@ type CombatMoveMode =
   | "strafe-left"
   | "strafe-right"
   | "advance"
-  | "retreat";
+  | "retreat"
+  | "reposition";
 
 interface NavigationEdge {
   readonly to: number;
@@ -86,6 +92,7 @@ export class BotAI {
   private nextShotAt = 0;
   private searchUntil = 0;
   private nextSearchTurnAt = 0;
+  private nextSearchRepositionAt = 0;
   private hadVisualContact = false;
   private isEnabled = true;
   private wasBotAlive = true;
@@ -95,6 +102,8 @@ export class BotAI {
   private routeIndex = 0;
   private routeDestination: Vector3 | null = null;
   private nextRouteAt = 0;
+  private tacticalDestination: Vector3 | null = null;
+  private searchDestination: Vector3 | null = null;
 
   private avoidanceSign = Math.random() < 0.5 ? -1 : 1;
   private stuckForSeconds = 0;
@@ -107,10 +116,17 @@ export class BotAI {
     private readonly combatSystem: CombatSystem,
     private readonly patrolPoints: readonly Vector3[],
     private readonly navigationPoints: readonly Vector3[],
+    private readonly coverPoints: readonly ArenaCoverPoint[],
     difficultyId: BotDifficultyId = DEFAULT_BOT_DIFFICULTY_ID,
   ) {
-    if (patrolPoints.length === 0 || navigationPoints.length === 0) {
-      throw new Error("Arena Strike requires bot patrol and navigation points.");
+    if (
+      patrolPoints.length === 0 ||
+      navigationPoints.length === 0 ||
+      coverPoints.length === 0
+    ) {
+      throw new Error(
+        "Arena Strike requires bot patrol, navigation, and cover points.",
+      );
     }
 
     this.difficulty = getBotDifficultyDefinition(difficultyId);
@@ -158,7 +174,7 @@ export class BotAI {
     }
 
     const now = performance.now();
-    this.lastKnownPlayerPosition.copyFrom(playerPosition);
+    this.recordHeardPlayerPosition(playerPosition);
     this.lastContactAt = now;
     this.clearRoute();
 
@@ -244,6 +260,7 @@ export class BotAI {
   }
 
   private updatePatrol(now: number, deltaSeconds: number): void {
+    this.tacticalDestination = null;
     if (now < this.patrolPauseUntil) {
       this.combatSystem.turnBotToward(
         this.patrolScanTarget,
@@ -283,6 +300,13 @@ export class BotAI {
       return;
     }
 
+    if (this.hasClearLineOfSight(this.lastKnownPlayerPosition)) {
+      this.combatSystem.turnBotToward(
+        this.lastKnownPlayerPosition,
+        TURN_SPEED * deltaSeconds,
+      );
+    }
+
     this.navigateTo(
       this.lastKnownPlayerPosition,
       this.getMovementSpeed(PURSUIT_SPEED),
@@ -292,9 +316,32 @@ export class BotAI {
   }
 
   private updateSearch(now: number, deltaSeconds: number): void {
+    if (
+      this.searchDestination !== null &&
+      !this.navigateTo(
+        this.searchDestination,
+        this.getMovementSpeed(PURSUIT_SPEED * 0.78),
+        now,
+        deltaSeconds,
+      )
+    ) {
+      return;
+    }
+
     if (now >= this.nextSearchTurnAt) {
-      this.setRandomLookTarget(this.searchLookTarget, 6);
+      this.setSearchLookTarget();
       this.nextSearchTurnAt = now + this.randomBetween(380, 720);
+    }
+
+    if (now >= this.nextSearchRepositionAt) {
+      this.searchDestination = this.findSearchDestination();
+      this.nextSearchRepositionAt =
+        now +
+        this.randomBetween(
+          SEARCH_REPOSITION_MIN_MS,
+          SEARCH_REPOSITION_MAX_MS,
+        );
+      this.clearRoute();
     }
 
     this.combatSystem.turnBotToward(
@@ -309,14 +356,16 @@ export class BotAI {
     now: number,
     deltaSeconds: number,
   ): void {
-    this.clearRoute();
+    if (this.combatMoveMode !== "reposition") {
+      this.clearRoute();
+    }
     const remainingAimError = this.combatSystem.turnBotToward(
       playerPosition,
       TURN_SPEED * deltaSeconds,
     );
 
     if (now >= this.nextCombatDecisionAt) {
-      this.chooseCombatMove(distanceToPlayer, now);
+      this.chooseCombatMove(playerPosition, distanceToPlayer, now);
     }
 
     this.executeCombatMove(
@@ -342,6 +391,24 @@ export class BotAI {
     now: number,
     deltaSeconds: number,
   ): void {
+    if (this.combatMoveMode === "reposition") {
+      const destination = this.tacticalDestination;
+
+      if (
+        destination === null ||
+        this.navigateTo(
+          destination,
+          this.getMovementSpeed(COMBAT_MOVE_SPEED * 1.2),
+          now,
+          deltaSeconds,
+        )
+      ) {
+        this.combatMoveMode = "hold";
+        this.tacticalDestination = null;
+      }
+      return;
+    }
+
     if (this.combatMoveMode === "hold") {
       return;
     }
@@ -397,8 +464,28 @@ export class BotAI {
     );
   }
 
-  private chooseCombatMove(distanceToPlayer: number, now: number): void {
+  private chooseCombatMove(
+    playerPosition: Vector3,
+    distanceToPlayer: number,
+    now: number,
+  ): void {
     const roll = Math.random();
+    const coverPoint = this.findTacticalCover(playerPosition);
+
+    if (coverPoint !== null && roll < 0.3) {
+      this.combatMoveMode = "reposition";
+      this.tacticalDestination = coverPoint.peekPosition.clone();
+      this.clearRoute();
+      this.nextCombatDecisionAt =
+        now +
+        this.randomBetween(
+          COMBAT_DECISION_MIN_MS,
+          COMBAT_DECISION_MAX_MS,
+        ) * this.difficulty.combatDecisionIntervalMultiplier;
+      return;
+    }
+
+    this.tacticalDestination = null;
 
     if (distanceToPlayer < PREFERRED_MINIMUM_RANGE) {
       this.combatMoveMode = roll < 0.62 ? "retreat" : this.randomStrafeMode();
@@ -765,6 +852,7 @@ export class BotAI {
     this.avoidanceSign *= -1;
     this.stuckForSeconds = 0;
     this.clearRoute();
+    this.nextRouteAt = this.recoveryUntil;
   }
 
   private avoidObstacles(direction: Vector3): Vector3 {
@@ -824,7 +912,13 @@ export class BotAI {
   }
 
   private hasClearLineOfSight(target: Vector3): boolean {
-    const origin = this.combatSystem.getBotEyePosition();
+    return this.hasClearLineOfSightFrom(
+      this.combatSystem.getBotEyePosition(),
+      target,
+    );
+  }
+
+  private hasClearLineOfSightFrom(origin: Vector3, target: Vector3): boolean {
     const toTarget = target.subtract(origin);
     const distance = toTarget.length();
 
@@ -983,7 +1077,104 @@ export class BotAI {
     this.searchUntil =
       now + this.randomBetween(SEARCH_DURATION_MIN_MS, SEARCH_DURATION_MAX_MS);
     this.nextSearchTurnAt = now;
+    this.nextSearchRepositionAt = now;
+    this.searchDestination = this.findSearchDestination();
+    this.tacticalDestination = null;
     this.clearRoute();
+  }
+
+  private findTacticalCover(playerPosition: Vector3): ArenaCoverPoint | null {
+    const botPosition = this.combatSystem.getBotPosition();
+    let selectedPoint: ArenaCoverPoint | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (const coverPoint of this.coverPoints) {
+      const distanceToPeek = this.horizontalDistance(
+        botPosition,
+        coverPoint.peekPosition,
+      );
+      const distanceToPlayer = this.horizontalDistance(
+        coverPoint.peekPosition,
+        playerPosition,
+      );
+
+      if (
+        distanceToPeek > 16 ||
+        distanceToPlayer < TACTICAL_COVER_MIN_RANGE ||
+        distanceToPlayer > TACTICAL_COVER_MAX_RANGE ||
+        this.hasClearLineOfSightFrom(
+          coverPoint.coverPosition.add(new Vector3(0, 1.15, 0)),
+          playerPosition,
+        ) ||
+        !this.hasClearLineOfSightFrom(
+          coverPoint.peekPosition.add(new Vector3(0, 1.15, 0)),
+          playerPosition,
+        )
+      ) {
+        continue;
+      }
+
+      const score =
+        24 - distanceToPeek +
+        Math.max(0, 10 - Math.abs(distanceToPlayer - 12)) * 0.35;
+
+      if (score > bestScore) {
+        bestScore = score;
+        selectedPoint = coverPoint;
+      }
+    }
+
+    return selectedPoint;
+  }
+
+  private findSearchDestination(): Vector3 | null {
+    const origin = this.combatSystem.getBotPosition();
+    const candidates = [
+      ...this.coverPoints.map((coverPoint) => coverPoint.peekPosition),
+      ...this.navigationPoints,
+    ].filter(
+      (candidate) =>
+        this.horizontalDistance(candidate, this.lastKnownPlayerPosition) <= 14 &&
+        this.hasClearLineOfSightFrom(
+          candidate.add(new Vector3(0, 1.15, 0)),
+          this.lastKnownPlayerPosition,
+        ),
+    );
+
+    if (candidates.length === 0) {
+      return this.lastKnownPlayerPosition.clone();
+    }
+
+    return candidates.reduce((best, candidate) =>
+      this.horizontalDistance(origin, candidate) <
+      this.horizontalDistance(origin, best)
+        ? candidate
+        : best,
+    ).clone();
+  }
+
+  private setSearchLookTarget(): void {
+    if (this.hasClearLineOfSight(this.lastKnownPlayerPosition)) {
+      this.searchLookTarget.copyFrom(this.lastKnownPlayerPosition);
+      return;
+    }
+
+    this.setRandomLookTarget(this.searchLookTarget, 6);
+  }
+
+  private recordHeardPlayerPosition(playerPosition: Vector3): void {
+    const hearingDistance = this.horizontalDistance(
+      this.combatSystem.getBotPosition(),
+      playerPosition,
+    );
+    const uncertainty = Math.min(3.5, 0.6 + hearingDistance * 0.08);
+    const angle = Math.random() * Math.PI * 2;
+
+    this.lastKnownPlayerPosition.copyFromFloats(
+      playerPosition.x + Math.cos(angle) * uncertainty,
+      playerPosition.y,
+      playerPosition.z + Math.sin(angle) * uncertainty,
+    );
   }
 
   private setRandomLookTarget(target: Vector3, distance: number): void {
