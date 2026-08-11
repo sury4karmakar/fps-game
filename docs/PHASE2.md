@@ -2,7 +2,7 @@
 
 ## Phase 2 outcome
 
-Arena Strike becomes a more replayable single-player first-person shooter while keeping the Phase 1 match format: one human player versus one AI bot in a five-minute indoor arena match. The release adds meaningful player choice, stronger bot behavior, a second arena, and clearer combat feedback without expanding into multiplayer or additional game modes.
+Arena Strike becomes a more replayable single-player first-person shooter while keeping the Phase 1 match format: one human player versus one AI bot in a five-minute indoor arena match. The release adds meaningful player choice, stronger bot behavior, armor, settings, ADS, and clearer combat feedback without expanding into multiplayer or additional game modes.
 
 ## Phase 2 scope
 
@@ -14,7 +14,6 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 - [x] Define typed weapon configuration data for all Phase 2 weapons.
 - [x] Define typed difficulty presets for Easy, Normal, and Hard.
-- [x] Define typed map metadata and map-selection state.
 - [x] Preserve the Phase 1 match flow and timer override while adding the new configuration paths.
 - [x] Add a Phase 2 regression checklist for maps, weapons, difficulty, pickups, settings, and complete matches.
 
@@ -28,12 +27,12 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 3. Bot Navigation and Tactical Behavior
 
-- [ ] Add reliable navigation support for both arenas.
+- [ ] Add reliable navigation support for the implemented arena.
 - [x] Add line-of-sight validation for pursuit, attack, and search behavior.
 - [x] Improve cover-aware movement and tactical positioning.
 - [x] Improve hearing, last-known-position search, and combat decision behavior.
 - [x] Improve obstacle, stuck, and route-recovery handling.
-- [ ] Author and validate map-specific patrol routes, cover positions, and safe respawn points.
+- [ ] Author and validate patrol routes, cover positions, and safe respawn points for the implemented arena.
 
 ### 4. Weapon System
 
@@ -52,16 +51,7 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 - [x] Preserve left-click firing while RMB is held through independent mouse-button input handling.
 - [x] Cancel ADS safely during reload, weapon switching, pointer unlock, death, and match end.
 
-### 5. Second Arena
-
-- [ ] Design and build one new indoor arena with a meaningfully different layout from the Phase 1 arena.
-- [ ] Add floor, walls, cover, platforms or ramps, lighting, collision meshes, and environment setup.
-- [ ] Add player and bot spawn points with safe-spawn validation.
-- [ ] Add bot patrol and navigation waypoints specific to the new arena.
-- [ ] Add map selection before a match begins.
-- [ ] Verify visibility, collision, spawn safety, performance, and full-match play on both arenas.
-
-### 6. Armor Pickup
+### 5. Armor Pickup
 
 - [x] Add a temporary armor pickup that can appear during a match.
 - [x] Define armor capacity, pickup duration or lifetime, and damage-absorption rules.
@@ -70,7 +60,7 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 - [x] Add distinct audio and visual feedback for armor pickup and armor damage.
 - [x] Ensure armor does not create unfair spawn or scoring behavior.
 
-### 7. Settings
+### 6. Settings
 
 - [x] Add mouse-sensitivity control with safe minimum and maximum bounds.
 - [x] Add audio volume and mute controls.
@@ -79,7 +69,7 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 - [x] Apply settings immediately and show the active values in the settings UI.
 - [x] Ensure settings do not break pointer lock, input, rendering, or audio initialization.
 
-### 8. Animation and Combat Feedback
+### 7. Animation and Combat Feedback
 
 - [x] Improve weapon fire, reload, and weapon-switch presentation.
 - [x] Improve bot movement, firing, damage, and death readability.
@@ -87,11 +77,11 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 - [x] Add clear feedback for armor hits, armor depletion, and weapon changes.
 - [x] Preserve reduced-motion behavior for existing and new effects.
 
-### 9. Verification, Balance, and Release Readiness
+### 8. Verification, Balance, and Release Readiness
 
 - [ ] Run strict TypeScript type checking.
 - [ ] Run the production build and preview build.
-- [ ] Test both maps across Easy, Normal, and Hard difficulties.
+- [ ] Test the implemented arena across Easy, Normal, and Hard difficulties.
 - [ ] Test every weapon, weapon switch path, reload state, armor state, respawn, and match result.
 - [ ] Test pointer lock, settings changes, audio, resize behavior, and runtime error recovery.
 - [ ] Check browser performance and memory behavior during complete matches.
@@ -102,7 +92,7 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 - One human player versus one AI bot.
 - Five-minute (300-second) round.
 - Easy, Normal, and Hard bot difficulty presets.
-- Two selectable arenas.
+- One implemented arena.
 - Three total weapons, including the Phase 1 rifle.
 - Weapon switching during a match.
 - Temporary armor pickup.
@@ -112,7 +102,7 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ## Phase 2 scope boundary
 
-Phase 2 does not include multiplayer, teams, additional game modes, persistent progression, simultaneous bots, more than two arenas, more than three total weapons, or a complete high-fidelity art replacement. These decisions keep the release focused on replayability and reliable single-player combat.
+Phase 2 does not include multiplayer, teams, additional game modes, persistent progression, simultaneous bots, a second arena or map selection, more than three total weapons, or a complete high-fidelity art replacement. These decisions keep the release focused on replayability and reliable single-player combat.
 
 ## Verification commands
 
@@ -125,4 +115,4 @@ npm run dev
 npm run preview
 ```
 
-Phase 2 is complete when the player can configure a map and difficulty, use the full weapon set, interact with armor, complete a stable five-minute match, and receive the correct result across both arenas.
+Phase 2 is complete when the player can configure difficulty and settings, use the full weapon set with ADS, interact with armor, complete a stable five-minute match in the implemented arena, and receive the correct result.

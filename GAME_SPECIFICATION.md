@@ -144,12 +144,20 @@ The following work is intentionally deferred until Phase 2 is complete and stabl
 
 The approved Must-do implementation plan is maintained module by module in [`docs/PHASE2.md`](docs/PHASE2.md). The following items are additional Phase 2 candidates and exclusions; they are not part of the Must-do release checklist.
 
+#### Future task: Second Arena and Map Selection
+
+The second arena is intentionally deferred until after the current single-arena Phase 2 release. When this future task is approved, implement the following as one coordinated feature:
+
+- [ ] Design and build one new indoor arena with a meaningfully different layout from the Training Yard.
+- [ ] Add floor, walls, cover, platforms or ramps, lighting, collision meshes, and environment setup.
+- [ ] Add player and bot spawn points with safe-spawn validation.
+- [ ] Add bot patrol and navigation waypoints specific to the new arena.
+- [ ] Add map selection before a match begins.
+- [ ] Verify visibility, collision, spawn safety, performance, and full-match play on both arenas.
+
 #### Should do
 
-- [ ] Add a match setup screen for map and difficulty selection.
-- [ ] Move weapon, map, and difficulty values into reusable typed configuration definitions.
-- [ ] Add map-specific bot routes, cover positions, and spawn validation tools.
-- [ ] Add equipped-weapon, reserve-ammunition, armor, map, and difficulty information to the HUD.
+- [ ] Add equipped-weapon, reserve-ammunition, armor, and difficulty information to the HUD.
 - [ ] Add distinct audio for each weapon and pickup.
 - [ ] Add basic accessibility improvements for new controls and effects.
 - [ ] Add developer test controls for maps, weapons, bot difficulties, and pickups.
