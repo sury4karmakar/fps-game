@@ -93,7 +93,7 @@ fps-game/
 | `src/game/arena/createEnvironment.ts` | Configures the sky sphere, fog, ambient and directional lighting, and filtered shadow generator used by the arena. |
 | `src/game/arena/arenaTypes.ts` | Defines the typed data returned by arena construction: spawn positions/facing, collidable meshes, and bot route points. |
 | `src/game/player/PlayerController.ts` | Runs the FPS camera and player input: pointer lock, WASD movement, mouse look, sprint, crouch, jump, gravity, collision, ground/ceiling checks, respawning, and footsteps. |
-| `src/game/weapon/WeaponSystem.ts` | Owns player weapons: firing, ADS, hitscan raycasts, independent ammunition, reload timing, recoil, muzzle flash, impact decals/sparks, hit markers, switching animation, and weapon HUD updates. |
+| `src/game/weapon/WeaponSystem.ts` | Owns the three player weapons: firing, ADS, hitscan raycasts, independent ammunition, reload timing, recoil, muzzle flash, impact decals/sparks, hit markers, switching animation, and weapon HUD updates. |
 | `src/game/combat/CombatSystem.ts` | Tracks player and bot health; resolves body/headshot damage; handles deaths, protected respawns, safe-spawn selection, bot visuals/fire feedback, damage HUD/messages, and bot-kill supply pickups. |
 | `src/game/bot/BotAI.ts` | Controls the bot’s patrol, detection, hearing, pursuit, search, navigation, obstacle/stuck recovery, aiming, movement, firing cadence, accuracy, and temporary combat decisions. |
 | `src/game/match/MatchManager.ts` | Controls waiting/playing/finished match states, the five-minute countdown, kill scoring, system enable/disable state, start/restart UI actions, and final player-win/bot-win/draw result. |
@@ -136,17 +136,19 @@ fps-game/
 
 A player can open the browser game, start a five-minute match, move safely through a 3D arena, fight one bot, see both scores and the clock, and receive a correct winner/draw result at the end.
 
-## Next Phases - Later, Not Part of the Current Build
+## Phase 2 Status
 
-The following work is intentionally deferred until Phase 2 is complete and stable.
+Phase 2 is complete. The approved single-arena expansion delivered three weapons, weapon switching, weapon-specific ADS, Easy/Normal/Hard bot difficulty, stronger bot navigation and tactical behavior, temporary armor, settings, improved combat feedback, and release-readiness verification.
 
-### Phase 2: Expanded Single-Player Game
+The completed implementation plan and verification record are maintained in [`docs/PHASE2.md`](docs/PHASE2.md) and [`docs/PHASE2_REGRESSION_CHECKLIST.md`](docs/PHASE2_REGRESSION_CHECKLIST.md).
 
-The approved Must-do implementation plan is maintained module by module in [`docs/PHASE2.md`](docs/PHASE2.md). The following items are additional Phase 2 candidates and exclusions; they are not part of the Must-do release checklist.
+## Future Phases
 
-#### Future task: Second Arena and Map Selection
+The following work is intentionally deferred until a separate scope decision is made.
 
-The second arena is intentionally deferred until after the current single-arena Phase 2 release. When this future task is approved, implement the following as one coordinated feature:
+### Future task: Second Arena and Map Selection
+
+The second arena is deferred until after the completed single-arena Phase 2 release. When this future task is approved, implement the following as one coordinated feature:
 
 - [ ] Design and build one new indoor arena with a meaningfully different layout from the Training Yard.
 - [ ] Add floor, walls, cover, platforms or ramps, lighting, collision meshes, and environment setup.
@@ -155,14 +157,14 @@ The second arena is intentionally deferred until after the current single-arena 
 - [ ] Add map selection before a match begins.
 - [ ] Verify visibility, collision, spawn safety, performance, and full-match play on both arenas.
 
-#### Should do
+### Deferred polish candidates
 
-- [ ] Add equipped-weapon, reserve-ammunition, armor, and difficulty information to the HUD.
-- [ ] Add distinct audio for each weapon and pickup.
+- [x] Equipped-weapon, reserve-ammunition, armor, and difficulty information are included in the Phase 2 HUD.
+- [x] Distinct audio is included for armor and pickup feedback.
 - [ ] Add basic accessibility improvements for new controls and effects.
 - [ ] Add developer test controls for maps, weapons, bot difficulties, and pickups.
 
-#### Do not do
+### Explicitly excluded
 
 - Online multiplayer, accounts, matchmaking, servers, anti-cheat, or network prediction.
 - Teams, buy phases, economies, ranked systems, or additional game modes.
