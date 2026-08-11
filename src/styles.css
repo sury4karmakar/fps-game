@@ -125,6 +125,10 @@ body {
   opacity: 1;
 }
 
+#crosshair.is-firing {
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
 #hit-marker {
   color: #fff;
   font-size: 2rem;
@@ -494,10 +498,25 @@ body {
   animation: armor-hit 180ms ease-out 2;
 }
 
+.armor-card.is-equipped {
+  animation: armor-equipped 650ms ease-out;
+}
+
 @keyframes armor-hit {
   50% {
     border-color: #b5edff;
     box-shadow: 0 0 18px rgb(82 204 255 / 70%);
+  }
+}
+
+@keyframes armor-equipped {
+  0% {
+    border-color: rgb(90 187 255 / 22%);
+  }
+
+  45% {
+    border-color: #c6f2ff;
+    box-shadow: 0 0 24px rgb(82 204 255 / 80%);
   }
 }
 
@@ -1112,6 +1131,17 @@ h1 {
 
   .match-overlay {
     transition: none;
+  }
+
+  #crosshair,
+  #crosshair.is-firing {
+    transition: none;
+    transform: translate(-50%, -50%);
+  }
+
+  .armor-card.is-damaged,
+  .armor-card.is-equipped {
+    animation: none;
   }
 }
 

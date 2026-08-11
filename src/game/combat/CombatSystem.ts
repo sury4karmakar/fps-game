@@ -63,6 +63,9 @@ interface BotModel {
   readonly headMaterial: StandardMaterial;
   readonly muzzleFlash: Mesh;
   readonly protectedMeshes: readonly Mesh[];
+  readonly torso: Mesh;
+  readonly leftLeg: Mesh;
+  readonly rightLeg: Mesh;
 }
 
 interface SupplyPickup {
@@ -111,9 +114,13 @@ export class CombatSystem {
   private combatEnabled = false;
   private playerDamageFlashUntil = 0;
   private messageVisibleUntil = 0;
+  private botDeathVisualUntil = 0;
+  private botLastMoveAt = 0;
+  private botWalkPhase = 0;
   private armor = 0;
   private armorExpiresAt = 0;
   private armorFlashUntil = 0;
+  private armorEquipFeedbackUntil = 0;
   private nextArmorSpawnAt = 0;
 
   public constructor(
@@ -244,6 +251,7 @@ export class CombatSystem {
     this.armor = 0;
     this.armorExpiresAt = 0;
     this.armorFlashUntil = 0;
+    this.armorEquipFeedbackUntil = 0;
     this.nextArmorSpawnAt = now + ARMOR_INITIAL_SPAWN_DELAY_MS;
     this.clearSupplyPickups();
     this.clearArmorPickup();
@@ -281,7 +289,12 @@ export class CombatSystem {
     const previousPosition = this.bot.collisionBody.position.clone();
     this.bot.collisionBody.moveWithCollisions(displacement);
     this.syncBotVisualToCollisionBody();
-    return Vector3.Distance(previousPosition, this.bot.collisionBody.position);
+    const distanceMoved = Vector3.Distance(previousPosition, this.bot.collisionBody.position);
+    if (distanceMoved > 0.002) {
+      this.botLastMoveAt = performance.now();
+      this.botWalkPhase += distanceMoved * 8;
+    }
+    return distanceMoved;
   }
 
   public turnBotToward(target: Vector3, maximumTurn: number): number {
@@ -343,12 +356,22 @@ export class CombatSystem {
       this.bot.muzzleFlash.setEnabled(false);
     }
 
+    this.updateBotAnimation(now);
+
+    if (!this.botState.alive && now >= this.botDeathVisualUntil) {
+      this.bot.root.setEnabled(false);
+    }
+
     if (now >= this.playerDamageFlashUntil) {
       this.hud.damageOverlay.classList.remove("is-visible");
     }
 
     if (now >= this.armorFlashUntil) {
       this.hud.armorPanel.classList.remove("is-damaged");
+    }
+
+    if (now >= this.armorEquipFeedbackUntil) {
+      this.hud.armorPanel.classList.remove("is-equipped");
     }
 
     if (now >= this.messageVisibleUntil) {
@@ -418,8 +441,8 @@ export class CombatSystem {
       this.reportKill("bot");
     } else {
       this.createSupplyPickup(this.bot.root.position, now);
-      this.bot.root.setEnabled(false);
       this.bot.collisionBody.setEnabled(false);
+      this.botDeathVisualUntil = now + 500;
       this.showMessage("BOT ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
       this.reportKill("player");
     }
@@ -451,6 +474,11 @@ export class CombatSystem {
     this.faceBotToward(safeSpawn.facingTarget);
     this.bot.collisionBody.setEnabled(true);
     this.bot.root.setEnabled(true);
+    this.bot.root.scaling.copyFromFloats(1, 0.85, 1);
+    this.bot.torso.rotation.z = 0;
+    this.bot.leftLeg.rotation.x = 0;
+    this.bot.rightLeg.rotation.x = 0;
+    this.botDeathVisualUntil = 0;
     this.updateBotProtectionVisual(true, now);
     this.showMessage("BOT RESPAWNED", now);
     this.updateHealthHud();
@@ -461,6 +489,26 @@ export class CombatSystem {
     state.alive = true;
     state.respawnAt = 0;
     state.spawnProtectedUntil = now + SPAWN_PROTECTION_MS;
+  }
+
+  private updateBotAnimation(now: number): void {
+    if (!this.botState.alive) {
+      const deathProgress = Math.min(1, Math.max(0, 1 - (this.botDeathVisualUntil - now) / 500));
+      this.bot.root.scaling.copyFromFloats(1 + deathProgress * 0.12, 0.85 * (1 - deathProgress * 0.78), 1 + deathProgress * 0.12);
+      this.bot.torso.rotation.z = deathProgress * 0.46;
+      this.bot.leftLeg.rotation.x = deathProgress * 0.58;
+      this.bot.rightLeg.rotation.x = -deathProgress * 0.35;
+      return;
+    }
+
+    const moving = now - this.botLastMoveAt < 120;
+    const stride = moving ? Math.sin(this.botWalkPhase) * 0.42 : 0;
+    const bob = moving ? Math.abs(Math.sin(this.botWalkPhase)) * 0.05 : 0;
+    this.bot.torso.position.y = 1.18 + bob;
+    this.bot.torso.rotation.z = 0;
+    this.bot.leftLeg.rotation.x = stride;
+    this.bot.rightLeg.rotation.x = -stride;
+    this.bot.root.scaling.copyFromFloats(1, 0.85, 1);
   }
 
   private createSupplyPickup(position: Vector3, now: number): void {
@@ -563,8 +611,8 @@ export class CombatSystem {
 
     this.armor = ARMOR_CAPACITY;
     this.armorExpiresAt = now + ARMOR_DURATION_MS;
-    this.armorFlashUntil = now + 650;
-    this.hud.armorPanel.classList.add("is-damaged");
+    this.armorEquipFeedbackUntil = now + 650;
+    this.hud.armorPanel.classList.add("is-equipped");
     this.audioSystem.playArmorPickup();
     this.showMessage("ARMOR EQUIPPED - 24 SECONDS", now, 1_800);
     this.clearArmorPickup();
@@ -578,6 +626,11 @@ export class CombatSystem {
       this.armorExpiresAt = 0;
       this.showMessage("ARMOR EXPIRED", now);
       this.updateHealthHud();
+    }
+
+    if (this.armor > 0) {
+      const remainingSeconds = Math.ceil((this.armorExpiresAt - now) / 1_000);
+      this.hud.armorStatus.textContent = `Armor active · ${remainingSeconds}s`;
     }
   }
 
@@ -919,6 +972,9 @@ export class CombatSystem {
       headMaterial,
       muzzleFlash,
       protectedMeshes,
+      torso,
+      leftLeg,
+      rightLeg,
     };
   }
 

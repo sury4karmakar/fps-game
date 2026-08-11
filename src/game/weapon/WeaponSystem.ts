@@ -34,6 +34,7 @@ const SPARK_LIFETIME_MS = 460;
 const MAX_IMPACTS = 36;
 
 export interface WeaponHudElements {
+  readonly crosshair: HTMLElement;
   readonly weaponName: HTMLElement;
   readonly weaponRole: HTMLElement;
   readonly weaponSlots: HTMLElement;
@@ -89,6 +90,7 @@ export class WeaponSystem {
   private weaponKick = 0;
   private hitMarkerTimeout: number | null = null;
   private muzzleFlashTimeout: number | null = null;
+  private fireFeedbackTimeout: number | null = null;
 
   public constructor(
     private readonly scene: Scene,
@@ -131,6 +133,7 @@ export class WeaponSystem {
     document.removeEventListener("pointerlockchange", this.handlePointerLockChange);
     if (this.hitMarkerTimeout !== null) window.clearTimeout(this.hitMarkerTimeout);
     if (this.muzzleFlashTimeout !== null) window.clearTimeout(this.muzzleFlashTimeout);
+    if (this.fireFeedbackTimeout !== null) window.clearTimeout(this.fireFeedbackTimeout);
     this.impacts.forEach(({ mesh }) => mesh.dispose());
     this.impactParticles.forEach(({ mesh }) => mesh.dispose());
     Object.values(this.models).forEach(({ root }) => root.dispose(false, true));
@@ -164,8 +167,10 @@ export class WeaponSystem {
     this.impacts.length = 0;
     this.impactParticles.length = 0;
     this.hud.hitMarker.classList.remove("is-visible", "is-elimination");
+    this.hud.crosshair.classList.remove("is-firing");
     this.updateWeaponVisibility();
     this.updateHud();
+    this.showFireFeedback();
   }
 
   /** Splits a pickup evenly so no one weapon becomes the only viable choice. */
@@ -251,6 +256,7 @@ export class WeaponSystem {
     this.switchStartedAt = performance.now();
     this.nextShotAt = this.switchStartedAt + WEAPON_SWITCH_DURATION_MS;
     this.weaponKick = 0;
+    this.updateHud();
   }
 
   private get isSwitching(): boolean {
@@ -353,6 +359,8 @@ export class WeaponSystem {
     const model = this.models[this.equippedWeaponId];
     model.root.position.set(0.31, -0.29, 0.58 - this.weaponKick);
     model.root.rotation.set(-0.025 + this.weaponKick * 0.35, -0.025, 0);
+    model.magazine.position.set(0, -0.2, 0.08);
+    model.magazine.rotation.set(-0.16, 0, 0);
     model.magazine.visibility = 1;
     if (this.isSwitching) {
       const progress = Math.max(
@@ -369,8 +377,19 @@ export class WeaponSystem {
       const progress = 1 - (this.reloadFinishesAt - performance.now()) / this.definition.reloadDurationMs;
       const pose = Math.sin(Math.max(0, Math.min(1, progress)) * Math.PI);
       model.root.position.y -= pose * 0.16;
+      model.root.position.x += pose * 0.07;
       model.root.rotation.z += pose * 0.52;
-      model.magazine.visibility = progress > 0.42 && progress < 0.57 ? 0 : 1;
+      if (progress >= 0.2 && progress < 0.42) {
+        const removal = (progress - 0.2) / 0.22;
+        model.magazine.position.y -= removal * 0.32;
+        model.magazine.rotation.z += removal * 0.18;
+      } else if (progress >= 0.42 && progress < 0.57) {
+        model.magazine.visibility = 0;
+      } else if (progress >= 0.57 && progress < 0.82) {
+        const insertion = (progress - 0.57) / 0.25;
+        model.magazine.position.y -= (1 - insertion) * 0.32;
+        model.magazine.rotation.z += (1 - insertion) * 0.18;
+      }
     }
   }
 
@@ -391,6 +410,15 @@ export class WeaponSystem {
       muzzleFlash.setEnabled(false);
       this.muzzleFlashTimeout = null;
     }, MUZZLE_FLASH_DURATION_MS);
+  }
+
+  private showFireFeedback(): void {
+    this.hud.crosshair.classList.add("is-firing");
+    if (this.fireFeedbackTimeout !== null) window.clearTimeout(this.fireFeedbackTimeout);
+    this.fireFeedbackTimeout = window.setTimeout(() => {
+      this.hud.crosshair.classList.remove("is-firing");
+      this.fireFeedbackTimeout = null;
+    }, 90);
   }
 
   private showHitMarker(eliminated: boolean): void {
@@ -446,8 +474,13 @@ export class WeaponSystem {
     this.hud.weaponRole.textContent = definition.role;
     this.hud.weaponSlots.innerHTML = WEAPON_IDS.map((weaponId, index) => `<span class="weapon-slot${weaponId === this.equippedWeaponId ? " is-equipped" : ""}">${index + 1} ${WEAPON_DEFINITIONS[weaponId].displayName}</span>`).join("");
     this.hud.ammoCount.textContent = `${this.ammo.ammoInMagazine} / ${this.ammo.reserveAmmo}`;
-    this.hud.reloadStatus.textContent = `Reloading ${definition.displayName}...`;
-    this.hud.reloadStatus.hidden = !this.isReloading;
+    const switchName = this.switchTargetId
+      ? WEAPON_DEFINITIONS[this.switchTargetId].displayName
+      : null;
+    this.hud.reloadStatus.textContent = switchName
+      ? `Switching to ${switchName}...`
+      : `Reloading ${definition.displayName}...`;
+    this.hud.reloadStatus.hidden = !this.isReloading && !this.isSwitching;
   }
 
   private createStartingAmmo(): Record<WeaponId, WeaponAmmoState> {

@@ -73,11 +73,11 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 8. Animation and Combat Feedback
 
-- [ ] Improve weapon fire, reload, and weapon-switch presentation.
-- [ ] Improve bot movement, firing, damage, and death readability.
-- [ ] Keep animations synchronized with firing, reload completion, switching, and damage events.
-- [ ] Add clear feedback for armor hits, armor depletion, and weapon changes.
-- [ ] Preserve reduced-motion behavior for existing and new effects.
+- [x] Improve weapon fire, reload, and weapon-switch presentation.
+- [x] Improve bot movement, firing, damage, and death readability.
+- [x] Keep animations synchronized with firing, reload completion, switching, and damage events.
+- [x] Add clear feedback for armor hits, armor depletion, and weapon changes.
+- [x] Preserve reduced-motion behavior for existing and new effects.
 
 ### 9. Verification, Balance, and Release Readiness
 
