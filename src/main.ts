@@ -5,6 +5,7 @@ import type { CombatHudElements } from "./game/combat/CombatSystem";
 import { DEFAULT_MATCH_CONFIGURATION } from "./game/config/gameConfig";
 import type { MatchHudElements } from "./game/match/MatchManager";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
+import type { SettingsHudElements } from "./game/settings/SettingsManager";
 
 type StatusState = "loading" | "ready" | "error";
 
@@ -63,6 +64,15 @@ const audioHud: AudioHudElements = {
   toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),
   status: requireElement<HTMLElement>("#audio-status"),
 };
+const settingsHud: SettingsHudElements = {
+  mouseSensitivity: requireElement<HTMLInputElement>("#mouse-sensitivity"),
+  mouseSensitivityValue: requireElement<HTMLElement>("#mouse-sensitivity-value"),
+  audioVolume: requireElement<HTMLInputElement>("#audio-volume"),
+  audioVolumeValue: requireElement<HTMLElement>("#audio-volume-value"),
+  muteButton: requireElement<HTMLButtonElement>("#settings-mute-button"),
+  graphicsQuality: requireElement<HTMLSelectElement>("#graphics-quality"),
+  graphicsQualityValue: requireElement<HTMLElement>("#graphics-quality-value"),
+};
 
 let application: GameApplication | null = null;
 
@@ -116,6 +126,7 @@ async function launchGame(): Promise<void> {
       combatHud,
       matchHud,
       audioHud,
+      settingsHud,
       {
         matchDurationMs: getDevelopmentMatchDurationMs(),
         matchConfiguration: DEFAULT_MATCH_CONFIGURATION,

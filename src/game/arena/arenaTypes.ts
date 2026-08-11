@@ -1,5 +1,6 @@
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import type { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import type { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator.js";
 
 export interface ArenaSpawnPoint {
   readonly id: string;
@@ -15,6 +16,7 @@ export interface ArenaCoverPoint {
 
 export interface ArenaBuildResult {
   readonly id: string;
+  readonly shadowGenerator: ShadowGenerator;
   readonly collidableMeshes: readonly AbstractMesh[];
   readonly botPatrolPoints: readonly Vector3[];
   readonly botNavigationPoints: readonly Vector3[];

@@ -120,6 +120,31 @@
             </select>
           </label>
 
+          <section class="settings-panel start-only" aria-label="Game settings">
+            <h3>Settings</h3>
+            <label class="settings-row" for="mouse-sensitivity">
+              <span>Mouse sensitivity <output id="mouse-sensitivity-value" for="mouse-sensitivity">1.00×</output></span>
+              <input id="mouse-sensitivity" type="range" min="0.35" max="2" step="0.05" value="1" />
+            </label>
+            <label class="settings-row" for="audio-volume">
+              <span>Master volume <output id="audio-volume-value" for="audio-volume">100%</output></span>
+              <input id="audio-volume" type="range" min="0" max="100" step="1" value="100" />
+            </label>
+            <div class="settings-row settings-toggle-row">
+              <span>Audio output</span>
+              <button id="settings-mute-button" type="button" aria-pressed="false">Mute</button>
+            </div>
+            <label class="settings-row" for="graphics-quality">
+              <span>Graphics quality <output id="graphics-quality-value" for="graphics-quality">Balanced</output></span>
+              <select id="graphics-quality" name="graphics-quality">
+                <option value="performance">Performance</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <p class="settings-note">Settings apply immediately. Performance lowers render resolution and disables shadows.</p>
+          </section>
+
           <section class="controls-panel start-only" aria-label="Game controls">
             <h3>Controls</h3>
             <div class="controls-grid">
@@ -130,6 +155,7 @@
               <div><span class="control-keys"><kbd>Space</kbd></span><span>Jump</span></div>
               <div><span class="control-keys"><kbd>R</kbd></span><span>Reload</span></div>
               <div><span class="control-keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span>Switch weapon</span></div>
+              <div><span class="control-keys"><kbd>Wheel</kbd></span><span>Cycle weapon</span></div>
               <div><span class="control-keys"><kbd>Left Ctrl</kbd></span><span>Crouch</span></div>
               <div><span class="control-keys"><kbd>Esc</kbd></span><span>Unlock mouse</span></div>
             </div>

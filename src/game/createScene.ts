@@ -1,4 +1,5 @@
 import type { Engine } from "@babylonjs/core/Engines/engine.js";
+import type { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator.js";
 import { Scene } from "@babylonjs/core/scene.js";
 import { createArena } from "./arena/createArena";
 import { AudioSystem, type AudioHudElements } from "./audio/AudioSystem";
@@ -22,6 +23,7 @@ export interface SceneBuildResult {
   readonly botAI: BotAI;
   readonly weaponSystem: WeaponSystem;
   readonly matchManager: MatchManager;
+  readonly shadowGenerator: ShadowGenerator;
 }
 
 export function createScene(
@@ -114,5 +116,6 @@ export function createScene(
     botAI,
     weaponSystem,
     matchManager,
+    shadowGenerator: arena.shadowGenerator,
   };
 }

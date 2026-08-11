@@ -743,6 +743,95 @@ body {
   outline-offset: 2px;
 }
 
+.settings-panel {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 15px;
+  border: 1px solid rgb(139 183 215 / 17%);
+  border-radius: 11px;
+  background: rgb(2 9 15 / 38%);
+  text-align: left;
+}
+
+.settings-panel h3 {
+  margin: 0;
+  color: #8197a9;
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.settings-row {
+  display: grid;
+  gap: 7px;
+  color: #aebfce;
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-row > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-row output {
+  color: #7ed6ff;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-row input,
+.settings-row select {
+  width: 100%;
+  accent-color: #72ccff;
+}
+
+.settings-row select {
+  border: 1px solid rgb(126 214 255 / 38%);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: #edf8ff;
+  background: rgb(4 16 27 / 88%);
+  font: inherit;
+  letter-spacing: 0.04em;
+}
+
+.settings-toggle-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.settings-toggle-row button {
+  min-width: 82px;
+  padding: 7px 10px;
+  border: 1px solid rgb(126 214 255 / 38%);
+  border-radius: 7px;
+  color: #d9f3ff;
+  background: rgb(67 166 220 / 11%);
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.settings-toggle-row button[aria-pressed="true"] {
+  border-color: rgb(255 117 107 / 50%);
+  color: #ff9c94;
+}
+
+.settings-note {
+  margin: 0;
+  color: #73889a;
+  font-size: 0.58rem;
+  line-height: 1.45;
+}
+
 .controls-panel {
   margin-bottom: 20px;
   padding: 15px;

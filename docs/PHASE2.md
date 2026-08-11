@@ -64,12 +64,12 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 7. Settings
 
-- [ ] Add mouse-sensitivity control with safe minimum and maximum bounds.
-- [ ] Add audio volume and mute controls.
-- [ ] Add graphics-quality presets appropriate for the browser renderer.
-- [ ] Add essential control options required for the Phase 2 systems.
-- [ ] Apply settings immediately and show the active values in the settings UI.
-- [ ] Ensure settings do not break pointer lock, input, rendering, or audio initialization.
+- [x] Add mouse-sensitivity control with safe minimum and maximum bounds.
+- [x] Add audio volume and mute controls.
+- [x] Add graphics-quality presets appropriate for the browser renderer.
+- [x] Add essential control options required for the Phase 2 systems.
+- [x] Apply settings immediately and show the active values in the settings UI.
+- [x] Ensure settings do not break pointer lock, input, rendering, or audio initialization.
 
 ### 8. Animation and Combat Feedback
 

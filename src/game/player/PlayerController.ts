@@ -23,6 +23,9 @@ const MIN_JUMP_INTERVAL_MS = 180;
 const WALK_FOOTSTEP_DISTANCE = 1.45;
 const SPRINT_FOOTSTEP_DISTANCE = 1.15;
 const MIN_FOOTSTEP_INTERVAL_MS = 210;
+const DEFAULT_MOUSE_SENSITIVITY = 1;
+const MIN_MOUSE_SENSITIVITY = 0.35;
+const MAX_MOUSE_SENSITIVITY = 2;
 
 const KEY_W = 87;
 const KEY_A = 65;
@@ -148,6 +151,16 @@ export class PlayerController {
     this.footstepDistance = 0;
     this.lastFootstepPosition.copyFrom(this.camera.position);
     this.setEnabled(true);
+  }
+
+  public setMouseSensitivity(value: number): number {
+    const sensitivity = Math.min(
+      MAX_MOUSE_SENSITIVITY,
+      Math.max(MIN_MOUSE_SENSITIVITY, Number.isFinite(value) ? value : DEFAULT_MOUSE_SENSITIVITY),
+    );
+    // Babylon's angular sensibility is inverse: lower values turn faster.
+    this.camera.angularSensibility = 3_200 / sensitivity;
+    return sensitivity;
   }
 
   private configureCamera(): void {

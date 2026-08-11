@@ -521,6 +521,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
 
   return {
     id: "training-yard",
+    shadowGenerator,
     collidableMeshes,
     botPatrolPoints,
     botNavigationPoints,

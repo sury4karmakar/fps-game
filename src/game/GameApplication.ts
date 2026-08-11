@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine.js";
+import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import { createScene } from "./createScene";
 import type { AudioHudElements, AudioSystem } from "./audio/AudioSystem";
@@ -11,6 +12,11 @@ import {
 import type { MatchHudElements, MatchManager } from "./match/MatchManager";
 import type { PlayerController } from "./player/PlayerController";
 import type { WeaponHudElements, WeaponSystem } from "./weapon/WeaponSystem";
+import {
+  SettingsManager,
+  type GraphicsQualityId,
+  type SettingsHudElements,
+} from "./settings/SettingsManager";
 
 export interface GameApplicationOptions {
   readonly matchDurationMs?: number;
@@ -26,6 +32,8 @@ export class GameApplication {
   private botAI: BotAI | null = null;
   private weaponSystem: WeaponSystem | null = null;
   private matchManager: MatchManager | null = null;
+  private settingsManager: SettingsManager | null = null;
+  private shadowGenerator: ShadowGenerator | null = null;
 
   private readonly handleResize = (): void => {
     this.engine?.resize();
@@ -37,6 +45,7 @@ export class GameApplication {
     private readonly combatHud: CombatHudElements,
     private readonly matchHud: MatchHudElements,
     private readonly audioHud: AudioHudElements,
+    private readonly settingsHud: SettingsHudElements,
     options: GameApplicationOptions = {},
   ) {
     this.matchDurationMs = options.matchDurationMs;
@@ -75,6 +84,13 @@ export class GameApplication {
     this.botAI = gameScene.botAI;
     this.weaponSystem = gameScene.weaponSystem;
     this.matchManager = gameScene.matchManager;
+    this.shadowGenerator = gameScene.shadowGenerator;
+    this.settingsManager = new SettingsManager(
+      this.settingsHud,
+      gameScene.playerController,
+      gameScene.audioSystem,
+      { applyGraphicsQuality: this.applyGraphicsQuality },
+    );
     await this.scene.whenReadyAsync();
 
     this.engine.runRenderLoop(() => {
@@ -88,6 +104,7 @@ export class GameApplication {
     window.removeEventListener("resize", this.handleResize);
     this.engine?.stopRenderLoop();
     this.matchManager?.dispose();
+    this.settingsManager?.dispose();
     this.weaponSystem?.dispose();
     this.botAI?.dispose();
     this.combatSystem?.dispose();
@@ -101,7 +118,23 @@ export class GameApplication {
     this.botAI = null;
     this.weaponSystem = null;
     this.matchManager = null;
+    this.settingsManager = null;
+    this.shadowGenerator = null;
     this.scene = null;
     this.engine = null;
   }
+
+  private readonly applyGraphicsQuality = (quality: GraphicsQualityId): void => {
+    const settings = {
+      performance: { hardwareScaling: 1.65, shadowDarkness: 0, filtering: ShadowGenerator.QUALITY_LOW },
+      balanced: { hardwareScaling: 1.25, shadowDarkness: 0.2, filtering: ShadowGenerator.QUALITY_MEDIUM },
+      high: { hardwareScaling: 1, shadowDarkness: 0.28, filtering: ShadowGenerator.QUALITY_HIGH },
+    }[quality];
+    this.engine?.setHardwareScalingLevel(settings.hardwareScaling);
+    if (this.shadowGenerator) {
+      this.shadowGenerator.setDarkness(settings.shadowDarkness);
+      this.shadowGenerator.filteringQuality = settings.filtering;
+    }
+    this.engine?.resize();
+  };
 }

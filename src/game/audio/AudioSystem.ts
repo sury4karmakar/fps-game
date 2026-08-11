@@ -10,6 +10,8 @@ export class AudioSystem {
   private masterGain: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private muted = false;
+  private volume = 100;
+  private readonly stateChangeListeners = new Set<() => void>();
   private readonly scheduledTimeouts = new Set<number>();
 
   public constructor(private readonly hud: AudioHudElements) {
@@ -33,6 +35,43 @@ export class AudioSystem {
 
   public playPlayerGunshot(): void {
     this.playGunshot(0.28, 118);
+  }
+
+  public get isMuted(): boolean {
+    return this.muted;
+  }
+
+  public get volumePercent(): number {
+    return this.volume;
+  }
+
+  public setMuted(muted: boolean): void {
+    this.muted = muted;
+    const context = this.context;
+    if (context && this.masterGain) {
+      this.masterGain.gain.setTargetAtTime(
+        muted ? 0 : this.volume / 100 * 0.36,
+        context.currentTime,
+        0.015,
+      );
+    }
+    this.updateHud();
+    this.notifyStateChanged();
+  }
+
+  public setVolume(value: number): number {
+    this.volume = Math.min(100, Math.max(0, Math.round(Number.isFinite(value) ? value : 100)));
+    const context = this.context;
+    if (context && this.masterGain && !this.muted) {
+      this.masterGain.gain.setTargetAtTime(this.volume / 100 * 0.36, context.currentTime, 0.015);
+    }
+    this.notifyStateChanged();
+    return this.volume;
+  }
+
+  public onStateChanged(listener: () => void): () => void {
+    this.stateChangeListeners.add(listener);
+    return () => this.stateChangeListeners.delete(listener);
   }
 
   public playBotGunshot(): void {
@@ -153,15 +192,8 @@ export class AudioSystem {
   }
 
   private readonly handleToggle = (): void => {
-    this.muted = !this.muted;
+    this.setMuted(!this.muted);
     const context = this.ensureContext();
-    const masterGain = this.getMasterGain(context);
-    masterGain.gain.setTargetAtTime(
-      this.muted ? 0 : 0.36,
-      context.currentTime,
-      0.015,
-    );
-    this.updateHud();
 
     if (!this.muted) {
       void context.resume();
@@ -258,7 +290,7 @@ export class AudioSystem {
 
     this.context = new AudioContext();
     this.masterGain = this.context.createGain();
-    this.masterGain.gain.value = this.muted ? 0 : 0.36;
+    this.masterGain.gain.value = this.muted ? 0 : this.volume / 100 * 0.36;
     this.masterGain.connect(this.context.destination);
     return this.context;
   }
@@ -266,7 +298,7 @@ export class AudioSystem {
   private getMasterGain(context: AudioContext): GainNode {
     if (!this.masterGain) {
       this.masterGain = context.createGain();
-      this.masterGain.gain.value = this.muted ? 0 : 0.36;
+      this.masterGain.gain.value = this.muted ? 0 : this.volume / 100 * 0.36;
       this.masterGain.connect(context.destination);
     }
 
@@ -304,5 +336,11 @@ export class AudioSystem {
     this.hud.toggleButton.setAttribute("aria-pressed", String(this.muted));
     this.hud.toggleButton.title = this.muted ? "Enable sound" : "Mute sound";
     this.hud.status.textContent = this.muted ? "Sound off" : "Sound on";
+  }
+
+  private notifyStateChanged(): void {
+    for (const listener of this.stateChangeListeners) {
+      listener();
+    }
   }
 }
