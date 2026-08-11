@@ -17,6 +17,7 @@ export interface WeaponDefinition {
   readonly range: number;
   readonly spreadRadians: number;
   readonly recoilKick: number;
+  readonly adsFieldOfView: number;
 }
 
 export const DEFAULT_WEAPON_ID: WeaponId = "assault-rifle";
@@ -37,6 +38,7 @@ export const WEAPON_DEFINITIONS: Readonly<Record<WeaponId, WeaponDefinition>> = 
     range: 80,
     spreadRadians: 0,
     recoilKick: 0.012,
+    adsFieldOfView: 0.64,
   },
   scattergun: {
     id: "scattergun",
@@ -53,6 +55,7 @@ export const WEAPON_DEFINITIONS: Readonly<Record<WeaponId, WeaponDefinition>> = 
     range: 24,
     spreadRadians: 0.09,
     recoilKick: 0.028,
+    adsFieldOfView: 0.73,
   },
   "marksman-rifle": {
     id: "marksman-rifle",
@@ -69,6 +72,7 @@ export const WEAPON_DEFINITIONS: Readonly<Record<WeaponId, WeaponDefinition>> = 
     range: 110,
     spreadRadians: 0.006,
     recoilKick: 0.02,
+    adsFieldOfView: 0.43,
   },
 };
 

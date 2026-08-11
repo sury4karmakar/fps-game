@@ -44,6 +44,14 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 - [x] Add equipped-weapon state and weapon information to the HUD.
 - [x] Balance weapon damage and availability against all three bot difficulties.
 
+#### Aim Down Sights
+
+- [x] Add hold-to-ADS with right mouse button for all three weapons.
+- [x] Define weapon-specific ADS zoom values in typed weapon configuration.
+- [x] Synchronize camera FOV, first-person weapon positioning, and crosshair ADS presentation.
+- [x] Preserve left-click firing while RMB is held through independent mouse-button input handling.
+- [x] Cancel ADS safely during reload, weapon switching, pointer unlock, death, and match end.
+
 ### 5. Second Arena
 
 - [ ] Design and build one new indoor arena with a meaningfully different layout from the Phase 1 arena.

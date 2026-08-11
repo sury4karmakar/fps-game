@@ -1,7 +1,7 @@
 import type { FreeCamera } from "@babylonjs/core/Cameras/freeCamera.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { Color3 } from "@babylonjs/core/Maths/math.color.js";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
@@ -32,6 +32,11 @@ const WEAPON_SWITCH_DURATION_MS = 320;
 const IMPACT_LIFETIME_MS = 360;
 const SPARK_LIFETIME_MS = 460;
 const MAX_IMPACTS = 36;
+const MAX_DECALS = 20;
+const DECAL_LIFETIME_MS = 7_000;
+const MIN_DECAL_SPACING = 0.14;
+const DEFAULT_FIELD_OF_VIEW = 0.8;
+const ADS_TRANSITION_PER_SECOND = 9;
 
 export interface WeaponHudElements {
   readonly crosshair: HTMLElement;
@@ -70,10 +75,19 @@ interface ImpactParticle {
   readonly createdAt: number;
 }
 
+interface ImpactDecal {
+  readonly mesh: Mesh;
+  readonly sourceMesh: AbstractMesh;
+  readonly position: Vector3;
+  readonly createdAt: number;
+}
+
 export class WeaponSystem {
   private readonly impactMaterial: StandardMaterial;
+  private readonly decalMaterial: StandardMaterial;
   private readonly impacts: ImpactEffect[] = [];
   private readonly impactParticles: ImpactParticle[] = [];
+  private readonly decals: ImpactDecal[] = [];
   private readonly models: Readonly<Record<WeaponId, WeaponModel>>;
   private readonly ammoByWeapon: Record<WeaponId, WeaponAmmoState>;
   private readonly updateObserver: Observer<Scene>;
@@ -82,6 +96,8 @@ export class WeaponSystem {
   private isEnabled = true;
   private isReloading = false;
   private isTriggerHeld = false;
+  private isAiming = false;
+  private aimBlend = 0;
   private nextShotAt = 0;
   private recoilToRecover = 0;
   private reloadFinishesAt = 0;
@@ -111,10 +127,12 @@ export class WeaponSystem {
     };
     this.ammoByWeapon = this.createStartingAmmo();
     this.impactMaterial = this.createImpactMaterial();
+    this.decalMaterial = this.createDecalMaterial();
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => this.update());
 
-    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
-    window.addEventListener("pointerup", this.handlePointerUp);
+    this.canvas.addEventListener("mousedown", this.handleMouseDown);
+    this.canvas.addEventListener("contextmenu", this.preventContextMenu);
+    window.addEventListener("mouseup", this.handleMouseUp);
     window.addEventListener("keydown", this.handleKeyDown, { passive: false });
     window.addEventListener("wheel", this.handleWheel, { passive: false });
     window.addEventListener("blur", this.releaseTrigger);
@@ -125,8 +143,9 @@ export class WeaponSystem {
 
   public dispose(): void {
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
-    this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
-    window.removeEventListener("pointerup", this.handlePointerUp);
+    this.canvas.removeEventListener("mousedown", this.handleMouseDown);
+    this.canvas.removeEventListener("contextmenu", this.preventContextMenu);
+    window.removeEventListener("mouseup", this.handleMouseUp);
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("wheel", this.handleWheel);
     window.removeEventListener("blur", this.releaseTrigger);
@@ -136,13 +155,16 @@ export class WeaponSystem {
     if (this.fireFeedbackTimeout !== null) window.clearTimeout(this.fireFeedbackTimeout);
     this.impacts.forEach(({ mesh }) => mesh.dispose());
     this.impactParticles.forEach(({ mesh }) => mesh.dispose());
+    this.decals.forEach(({ mesh }) => mesh.dispose());
     Object.values(this.models).forEach(({ root }) => root.dispose(false, true));
     this.impactMaterial.dispose();
+    this.decalMaterial.dispose();
   }
 
   public setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
     this.isTriggerHeld = false;
+    this.isAiming = false;
     if (!enabled) {
       this.cancelReload();
       this.switchTargetId = null;
@@ -155,6 +177,9 @@ export class WeaponSystem {
     this.equippedWeaponId = DEFAULT_WEAPON_ID;
     this.isReloading = false;
     this.isTriggerHeld = false;
+    this.isAiming = false;
+    this.aimBlend = 0;
+    this.camera.fov = DEFAULT_FIELD_OF_VIEW;
     this.nextShotAt = 0;
     this.recoilToRecover = 0;
     this.weaponKick = 0;
@@ -164,8 +189,10 @@ export class WeaponSystem {
     Object.assign(this.ammoByWeapon, this.createStartingAmmo());
     this.impacts.forEach(({ mesh }) => mesh.dispose());
     this.impactParticles.forEach(({ mesh }) => mesh.dispose());
+    this.decals.forEach(({ mesh }) => mesh.dispose());
     this.impacts.length = 0;
     this.impactParticles.length = 0;
+    this.decals.length = 0;
     this.hud.hitMarker.classList.remove("is-visible", "is-elimination");
     this.hud.crosshair.classList.remove("is-firing");
     this.updateWeaponVisibility();
@@ -199,16 +226,25 @@ export class WeaponSystem {
     return this.ammoByWeapon[this.equippedWeaponId];
   }
 
-  private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (!this.isEnabled || event.button !== 0 || document.pointerLockElement !== this.canvas) return;
+  private readonly handleMouseDown = (event: MouseEvent): void => {
+    if (!this.isEnabled || document.pointerLockElement !== this.canvas) return;
+    if (event.button === 2) {
+      event.preventDefault();
+      this.isAiming = !this.isReloading && !this.isSwitching;
+      return;
+    }
+    if (event.button !== 0) return;
     event.preventDefault();
     this.isTriggerHeld = true;
     this.tryFire(performance.now());
   };
 
-  private readonly handlePointerUp = (event: PointerEvent): void => {
+  private readonly handleMouseUp = (event: MouseEvent): void => {
     if (event.button === 0) this.isTriggerHeld = false;
+    if (event.button === 2) this.isAiming = false;
   };
+
+  private readonly preventContextMenu = (event: MouseEvent): void => event.preventDefault();
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     if (!this.isEnabled || document.pointerLockElement !== this.canvas || event.repeat) return;
@@ -236,7 +272,10 @@ export class WeaponSystem {
     if (document.pointerLockElement !== this.canvas) this.releaseTrigger();
   };
 
-  private readonly releaseTrigger = (): void => { this.isTriggerHeld = false; };
+  private readonly releaseTrigger = (): void => {
+    this.isTriggerHeld = false;
+    this.isAiming = false;
+  };
 
   private update(): void {
     const now = performance.now();
@@ -244,6 +283,7 @@ export class WeaponSystem {
     if (this.isReloading && now >= this.reloadFinishesAt) this.finishReload();
     this.updateWeaponSwitch(now);
     if (this.isEnabled && !this.isSwitching && this.isTriggerHeld && this.definition.fireMode === "automatic" && document.pointerLockElement === this.canvas) this.tryFire(now);
+    this.updateAim(deltaSeconds);
     this.updateWeaponTransform(deltaSeconds, now);
     this.updateImpacts(now, deltaSeconds);
   }
@@ -252,6 +292,7 @@ export class WeaponSystem {
     if (weaponId === this.equippedWeaponId || this.isSwitching) return;
     this.cancelReload();
     this.isTriggerHeld = false;
+    this.isAiming = false;
     this.switchTargetId = weaponId;
     this.switchStartedAt = performance.now();
     this.nextShotAt = this.switchStartedAt + WEAPON_SWITCH_DURATION_MS;
@@ -301,7 +342,7 @@ export class WeaponSystem {
       const hit = this.scene.pickWithRay(ray, (mesh) => mesh.isPickable, false);
       if (!hit?.hit || !hit.pickedPoint || !hit.pickedMesh) continue;
       const normal = hit.getNormal(true) ?? ray.direction.scale(-1);
-      this.createImpact(hit.pickedPoint, normal);
+      this.createImpact(hit.pickedPoint, normal, hit.pickedMesh);
       const result = this.resolveDamageHit(hit.pickedMesh, definition.damagePerProjectile);
       if (result.damageApplied) {
         this.showHitMarker(result.eliminated);
@@ -326,6 +367,7 @@ export class WeaponSystem {
     if (this.isReloading || this.ammo.ammoInMagazine === magazineCapacity || this.ammo.reserveAmmo === 0) return;
     this.isReloading = true;
     this.isTriggerHeld = false;
+    this.isAiming = false;
     this.reloadFinishesAt = now + reloadDurationMs;
     this.audioSystem.playReload();
     this.updateHud();
@@ -349,6 +391,21 @@ export class WeaponSystem {
     this.weaponKick = Math.min(this.weaponKick + recoil * 5.4, 0.15);
   }
 
+  private updateAim(deltaSeconds: number): void {
+    const targetBlend = this.isAiming && !this.isReloading && !this.isSwitching ? 1 : 0;
+    const maximumChange = ADS_TRANSITION_PER_SECOND * deltaSeconds;
+    this.aimBlend += Math.max(
+      -maximumChange,
+      Math.min(maximumChange, targetBlend - this.aimBlend),
+    );
+    this.camera.fov = this.lerp(
+      DEFAULT_FIELD_OF_VIEW,
+      this.definition.adsFieldOfView,
+      this.aimBlend,
+    );
+    this.hud.crosshair.classList.toggle("is-aiming", this.aimBlend > 0.65);
+  }
+
   private updateWeaponTransform(deltaSeconds: number, now: number): void {
     if (this.recoilToRecover > 0) {
       const recovery = Math.min(this.recoilToRecover, RECOIL_RECOVERY_PER_SECOND * deltaSeconds);
@@ -357,8 +414,16 @@ export class WeaponSystem {
     }
     this.weaponKick = Math.max(0, this.weaponKick - 0.5 * deltaSeconds);
     const model = this.models[this.equippedWeaponId];
-    model.root.position.set(0.31, -0.29, 0.58 - this.weaponKick);
-    model.root.rotation.set(-0.025 + this.weaponKick * 0.35, -0.025, 0);
+    model.root.position.set(
+      this.lerp(0.31, 0.06, this.aimBlend),
+      this.lerp(-0.29, -0.18, this.aimBlend),
+      this.lerp(0.58, 0.43, this.aimBlend) - this.weaponKick,
+    );
+    model.root.rotation.set(
+      -0.025 + this.weaponKick * 0.35,
+      this.lerp(-0.025, 0, this.aimBlend),
+      0,
+    );
     model.magazine.position.set(0, -0.2, 0.08);
     model.magazine.rotation.set(-0.16, 0, 0);
     model.magazine.visibility = 1;
@@ -431,7 +496,11 @@ export class WeaponSystem {
     }, HIT_MARKER_DURATION_MS);
   }
 
-  private createImpact(position: Vector3, normal: Vector3): void {
+  private createImpact(
+    position: Vector3,
+    normal: Vector3,
+    sourceMesh: AbstractMesh,
+  ): void {
     const createdAt = performance.now();
     const impact = CreateSphere(`weapon-impact-${createdAt}`, { diameter: 0.075, segments: 6 }, this.scene);
     impact.position.copyFrom(position.add(normal.scale(0.025)));
@@ -439,6 +508,10 @@ export class WeaponSystem {
     impact.isPickable = false;
     impact.renderingGroupId = 1;
     this.impacts.push({ mesh: impact, createdAt });
+    const metadata = sourceMesh.metadata as { arenaCollision?: boolean } | null;
+    if (metadata?.arenaCollision === true) {
+      this.createImpactDecal(position, normal, sourceMesh, createdAt);
+    }
     for (let index = 0; index < 2; index += 1) {
       const spark = CreateBox(`weapon-spark-${createdAt}-${index}`, { size: 0.035 }, this.scene);
       spark.position.copyFrom(impact.position);
@@ -466,6 +539,48 @@ export class WeaponSystem {
       particle.mesh.position.addInPlace(particle.velocity.scale(deltaSeconds));
       particle.mesh.visibility = 1 - progress;
     }
+    for (let index = this.decals.length - 1; index >= 0; index -= 1) {
+      const decal = this.decals[index]!;
+      const progress = (now - decal.createdAt) / DECAL_LIFETIME_MS;
+      if (progress >= 1) {
+        decal.mesh.dispose();
+        this.decals.splice(index, 1);
+        continue;
+      }
+      decal.mesh.visibility = progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4;
+    }
+  }
+
+  private createImpactDecal(
+    position: Vector3,
+    normal: Vector3,
+    sourceMesh: AbstractMesh,
+    createdAt: number,
+  ): void {
+    const surfaceNormal = normal.normalizeToNew();
+    const overlapsExistingDecal = this.decals.some(
+      (decal) =>
+        decal.sourceMesh === sourceMesh &&
+        Vector3.DistanceSquared(decal.position, position) < MIN_DECAL_SPACING * MIN_DECAL_SPACING,
+    );
+    if (overlapsExistingDecal) return;
+
+    const decal = CreateCylinder(
+      `weapon-decal-${createdAt}`,
+      { diameter: 0.075 + Math.random() * 0.015, height: 0.008, tessellation: 16 },
+      this.scene,
+    );
+    decal.position.copyFrom(position.add(surfaceNormal.scale(0.004)));
+    decal.rotationQuaternion = Quaternion.Identity();
+    Quaternion.FromUnitVectorsToRef(Vector3.Up(), surfaceNormal, decal.rotationQuaternion);
+    decal.material = this.decalMaterial;
+    decal.isPickable = false;
+    decal.checkCollisions = false;
+    decal.receiveShadows = false;
+    // World group keeps scene depth occlusion, so marks cannot show through cover.
+    decal.renderingGroupId = 0;
+    this.decals.push({ mesh: decal, sourceMesh, position: position.clone(), createdAt });
+    while (this.decals.length > MAX_DECALS) this.decals.shift()?.mesh.dispose();
   }
 
   private updateHud(): void {
@@ -488,6 +603,10 @@ export class WeaponSystem {
       const weapon = WEAPON_DEFINITIONS[weaponId];
       return [weaponId, { ammoInMagazine: weapon.magazineCapacity, reserveAmmo: weapon.startingReserveAmmo }];
     })) as Record<WeaponId, WeaponAmmoState>;
+  }
+
+  private lerp(start: number, end: number, amount: number): number {
+    return start + (end - start) * amount;
   }
 
   private createWeaponModel(weaponId: WeaponId): WeaponModel {
@@ -524,6 +643,15 @@ export class WeaponSystem {
     const material = new StandardMaterial("weapon-impact-material", this.scene);
     material.disableLighting = true;
     material.emissiveColor = new Color3(1, 0.58, 0.12);
+    return material;
+  }
+
+  private createDecalMaterial(): StandardMaterial {
+    const material = new StandardMaterial("weapon-decal-material", this.scene);
+    material.diffuseColor = new Color3(0.018, 0.014, 0.012);
+    material.emissiveColor = new Color3(0.01, 0.006, 0.003);
+    material.specularColor = Color3.Black();
+    material.alpha = 0.82;
     return material;
   }
 }

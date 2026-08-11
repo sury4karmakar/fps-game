@@ -129,6 +129,15 @@ body {
   transform: translate(-50%, -50%) scale(1.2);
 }
 
+#crosshair.is-aiming {
+  opacity: 0.82;
+  transform: translate(-50%, -50%) scale(0.65);
+}
+
+#crosshair.is-aiming.is-firing {
+  transform: translate(-50%, -50%) scale(0.85);
+}
+
 #hit-marker {
   color: #fff;
   font-size: 2rem;

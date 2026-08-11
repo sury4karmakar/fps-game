@@ -25,9 +25,21 @@ Arena Strike is a compact, skill-focused first-person shooter that runs in a mod
 ## Player Experience
 
 - **Start screen:** Explain controls and begin a new five-minute match.
-- **Combat:** Move with WASD, look with the mouse, jump, aim with a centered crosshair, fire the rifle, and reload.
+- **Combat:** Move with WASD, look with the mouse, jump, aim with a centered crosshair, hold right mouse to use weapon-specific ADS, fire, switch weapons, and reload.
 - **HUD:** Show player health, ammo, player kills, bot kills, and remaining match time at all times.
 - **End screen:** Declare Player Win, Bot Win, or Draw; show the final score; offer Restart.
+
+### Aim Down Sights (ADS)
+
+ADS is a hold-to-aim feature available on every player weapon. Holding the right mouse button smoothly narrows the camera field of view and moves the equipped weapon into an aimed position. Releasing the button returns to the normal hip-fire view. ADS is cancelled safely when the player reloads, switches weapons, unlocks the pointer, dies, or the match ends. Left mouse fire continues to work while right mouse ADS is held.
+
+| Weapon | ADS field of view | Intended use |
+|---|---:|---|
+| Assault Rifle | 0.64 radians | Moderate mid-range zoom |
+| Scattergun | 0.73 radians | Light close-range zoom |
+| Marksman Rifle | 0.43 radians | Strong long-range zoom |
+
+The ADS transition also updates the crosshair and first-person weapon transform together. The values are defined in `src/game/config/gameConfig.ts` and applied by `src/game/weapon/WeaponSystem.ts`.
 
 ## Technology Stack
 
@@ -81,7 +93,7 @@ fps-game/
 | `src/game/arena/createEnvironment.ts` | Configures the sky sphere, fog, ambient and directional lighting, and filtered shadow generator used by the arena. |
 | `src/game/arena/arenaTypes.ts` | Defines the typed data returned by arena construction: spawn positions/facing, collidable meshes, and bot route points. |
 | `src/game/player/PlayerController.ts` | Runs the FPS camera and player input: pointer lock, WASD movement, mouse look, sprint, crouch, jump, gravity, collision, ground/ceiling checks, respawning, and footsteps. |
-| `src/game/weapon/WeaponSystem.ts` | Owns the player rifle: input to fire, hitscan raycasts, 30-round magazine/90-round total ammo limit, reload timing, recoil, muzzle flash, impact decals/sparks, hit markers, and weapon HUD updates. |
+| `src/game/weapon/WeaponSystem.ts` | Owns player weapons: firing, ADS, hitscan raycasts, independent ammunition, reload timing, recoil, muzzle flash, impact decals/sparks, hit markers, switching animation, and weapon HUD updates. |
 | `src/game/combat/CombatSystem.ts` | Tracks player and bot health; resolves body/headshot damage; handles deaths, protected respawns, safe-spawn selection, bot visuals/fire feedback, damage HUD/messages, and bot-kill supply pickups. |
 | `src/game/bot/BotAI.ts` | Controls the bot’s patrol, detection, hearing, pursuit, search, navigation, obstacle/stuck recovery, aiming, movement, firing cadence, accuracy, and temporary combat decisions. |
 | `src/game/match/MatchManager.ts` | Controls waiting/playing/finished match states, the five-minute countdown, kill scoring, system enable/disable state, start/restart UI actions, and final player-win/bot-win/draw result. |
