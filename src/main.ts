@@ -38,6 +38,10 @@ const combatHud: CombatHudElements = {
   botHealthFill: requireElement<HTMLElement>("#bot-health-fill"),
   combatMessage: requireElement<HTMLElement>("#combat-message"),
   damageOverlay: requireElement<HTMLElement>("#damage-overlay"),
+  armorPanel: requireElement<HTMLElement>("#armor-card"),
+  playerArmor: requireElement<HTMLElement>("#player-armor"),
+  playerArmorFill: requireElement<HTMLElement>("#player-armor-fill"),
+  armorStatus: requireElement<HTMLElement>("#armor-status"),
 };
 const matchHud: MatchHudElements = {
   state: requireElement<HTMLElement>("#match-state"),

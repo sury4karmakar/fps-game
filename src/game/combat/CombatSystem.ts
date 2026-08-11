@@ -31,6 +31,14 @@ const BOT_MUZZLE_FLASH_MS = 55;
 const SUPPLY_PICKUP_LIFETIME_MS = 15_000;
 const SUPPLY_PICKUP_AMMO = 30;
 const SUPPLY_PICKUP_RADIUS = 1.05;
+const ARMOR_CAPACITY = 75;
+const ARMOR_DAMAGE_ABSORPTION = 0.6;
+const ARMOR_PICKUP_LIFETIME_MS = 18_000;
+const ARMOR_DURATION_MS = 24_000;
+const ARMOR_RESPAWN_DELAY_MS = 28_000;
+const ARMOR_INITIAL_SPAWN_DELAY_MS = 20_000;
+const ARMOR_PICKUP_RADIUS = 1.1;
+const ARMOR_SPAWN_MINIMUM_DISTANCE = 7;
 
 type CombatantId = "player" | "bot";
 export type KillOwner = CombatantId;
@@ -63,6 +71,13 @@ interface SupplyPickup {
   readonly createdAt: number;
 }
 
+interface ArmorPickup {
+  readonly mesh: Mesh;
+  readonly createdAt: number;
+  readonly expiresAt: number;
+  readonly baseY: number;
+}
+
 export interface CombatHudElements {
   readonly playerHealth: HTMLElement;
   readonly playerHealthFill: HTMLElement;
@@ -70,6 +85,10 @@ export interface CombatHudElements {
   readonly botHealthFill: HTMLElement;
   readonly combatMessage: HTMLElement;
   readonly damageOverlay: HTMLElement;
+  readonly armorPanel: HTMLElement;
+  readonly playerArmor: HTMLElement;
+  readonly playerArmorFill: HTMLElement;
+  readonly armorStatus: HTMLElement;
 }
 
 export interface CombatHitResult {
@@ -83,13 +102,19 @@ export class CombatSystem {
   private readonly botState: CombatantState;
   private readonly updateObserver: Observer<Scene>;
   private readonly supplyMaterial: StandardMaterial;
+  private readonly armorMaterial: StandardMaterial;
   private readonly supplyPickups: SupplyPickup[] = [];
+  private armorPickup: ArmorPickup | null = null;
 
   private botDamageFlashUntil = 0;
   private botMuzzleFlashUntil = 0;
   private combatEnabled = false;
   private playerDamageFlashUntil = 0;
   private messageVisibleUntil = 0;
+  private armor = 0;
+  private armorExpiresAt = 0;
+  private armorFlashUntil = 0;
+  private nextArmorSpawnAt = 0;
 
   public constructor(
     private readonly scene: Scene,
@@ -109,6 +134,8 @@ export class CombatSystem {
     this.botState = this.createInitialState(now);
     this.bot = this.createBotModel(respawnPoints.bot[0]);
     this.supplyMaterial = this.createSupplyMaterial();
+    this.armorMaterial = this.createArmorMaterial();
+    this.nextArmorSpawnAt = now + ARMOR_INITIAL_SPAWN_DELAY_MS;
     this.updateHud(now);
 
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
@@ -122,6 +149,8 @@ export class CombatSystem {
     this.bot.root.dispose(false, true);
     this.clearSupplyPickups();
     this.supplyMaterial.dispose();
+    this.clearArmorPickup();
+    this.armorMaterial.dispose();
     this.hud.damageOverlay.classList.remove("is-visible");
     this.hud.combatMessage.hidden = true;
   }
@@ -186,6 +215,7 @@ export class CombatSystem {
       this.hud.damageOverlay.classList.remove("is-visible");
       this.hud.combatMessage.hidden = true;
       this.clearSupplyPickups();
+      this.clearArmorPickup();
     }
   }
 
@@ -211,7 +241,12 @@ export class CombatSystem {
     this.botMuzzleFlashUntil = 0;
     this.playerDamageFlashUntil = 0;
     this.messageVisibleUntil = 0;
+    this.armor = 0;
+    this.armorExpiresAt = 0;
+    this.armorFlashUntil = 0;
+    this.nextArmorSpawnAt = now + ARMOR_INITIAL_SPAWN_DELAY_MS;
     this.clearSupplyPickups();
+    this.clearArmorPickup();
     this.bot.muzzleFlash.setEnabled(false);
     this.hud.damageOverlay.classList.remove("is-visible");
     this.hud.combatMessage.hidden = true;
@@ -312,16 +347,39 @@ export class CombatSystem {
       this.hud.damageOverlay.classList.remove("is-visible");
     }
 
+    if (now >= this.armorFlashUntil) {
+      this.hud.armorPanel.classList.remove("is-damaged");
+    }
+
     if (now >= this.messageVisibleUntil) {
       this.hud.combatMessage.hidden = true;
     }
 
     this.updateSupplyPickups(now);
+    this.updateArmorPickup(now);
+    this.updateArmorState(now);
   }
 
   private applyDamage(target: CombatantId, damage: number, now: number): boolean {
     const state = target === "player" ? this.playerState : this.botState;
-    state.health = Math.max(0, state.health - Math.max(0, damage));
+    let healthDamage = Math.max(0, damage);
+
+    if (target === "player" && this.armor > 0 && healthDamage > 0) {
+      const absorbedDamage = Math.min(
+        this.armor,
+        Math.max(1, Math.round(healthDamage * ARMOR_DAMAGE_ABSORPTION)),
+      );
+      this.armor -= absorbedDamage;
+      healthDamage -= absorbedDamage;
+      this.armorFlashUntil = now + DAMAGE_FLASH_MS;
+      this.hud.armorPanel.classList.add("is-damaged");
+      this.audioSystem.playArmorDamage();
+      if (this.armor === 0) {
+        this.showMessage("ARMOR DEPLETED", now);
+      }
+    }
+
+    state.health = Math.max(0, state.health - healthDamage);
 
     if (target === "player") {
       this.playerDamageFlashUntil = now + DAMAGE_FLASH_MS;
@@ -353,6 +411,8 @@ export class CombatSystem {
     state.spawnProtectedUntil = 0;
 
     if (target === "player") {
+      this.armor = 0;
+      this.armorExpiresAt = 0;
       this.playerController.setEnabled(false);
       this.showMessage("YOU WERE ELIMINATED - RESPAWNING", now, RESPAWN_DELAY_MS);
       this.reportKill("bot");
@@ -471,6 +531,103 @@ export class CombatSystem {
     }
   }
 
+  private updateArmorPickup(now: number): void {
+    if (!this.armorPickup && now >= this.nextArmorSpawnAt) {
+      this.createArmorPickup(now);
+    }
+
+    const pickup = this.armorPickup;
+    if (!pickup) {
+      return;
+    }
+
+    if (now >= pickup.expiresAt) {
+      this.clearArmorPickup();
+      this.nextArmorSpawnAt = now + ARMOR_RESPAWN_DELAY_MS;
+      return;
+    }
+
+    const ageSeconds = (now - pickup.createdAt) / 1_000;
+    pickup.mesh.rotation.y += Math.min(this.scene.getEngine().getDeltaTime() / 1_000, 0.05) * 1.4;
+    pickup.mesh.position.y = pickup.baseY + Math.sin(ageSeconds * 3.5) * 0.06;
+    pickup.mesh.scaling.setAll(1 + Math.sin(ageSeconds * 6) * 0.07);
+
+    const playerPosition = this.playerController.camera.position;
+    const distance = Math.hypot(
+      pickup.mesh.position.x - playerPosition.x,
+      pickup.mesh.position.z - playerPosition.z,
+    );
+    if (!this.playerState.alive || distance > ARMOR_PICKUP_RADIUS) {
+      return;
+    }
+
+    this.armor = ARMOR_CAPACITY;
+    this.armorExpiresAt = now + ARMOR_DURATION_MS;
+    this.armorFlashUntil = now + 650;
+    this.hud.armorPanel.classList.add("is-damaged");
+    this.audioSystem.playArmorPickup();
+    this.showMessage("ARMOR EQUIPPED - 24 SECONDS", now, 1_800);
+    this.clearArmorPickup();
+    this.nextArmorSpawnAt = now + ARMOR_RESPAWN_DELAY_MS;
+    this.updateHealthHud();
+  }
+
+  private updateArmorState(now: number): void {
+    if (this.armor > 0 && now >= this.armorExpiresAt) {
+      this.armor = 0;
+      this.armorExpiresAt = 0;
+      this.showMessage("ARMOR EXPIRED", now);
+      this.updateHealthHud();
+    }
+  }
+
+  private createArmorPickup(now: number): void {
+    const position = this.selectArmorSpawnPosition();
+    const mesh = CreateCylinder(
+      `armor-pickup-${now}`,
+      { height: 0.82, diameterTop: 0.62, diameterBottom: 0.82, tessellation: 8 },
+      this.scene,
+    );
+    mesh.position.copyFrom(position);
+    mesh.position.y += 0.48;
+    mesh.material = this.armorMaterial;
+    mesh.isPickable = false;
+    mesh.checkCollisions = false;
+    mesh.receiveShadows = false;
+    mesh.renderOutline = true;
+    mesh.outlineColor.copyFromFloats(0.24, 0.78, 1);
+    mesh.outlineWidth = 0.06;
+    this.armorPickup = {
+      mesh,
+      createdAt: now,
+      expiresAt: now + ARMOR_PICKUP_LIFETIME_MS,
+      baseY: mesh.position.y,
+    };
+    this.showMessage("ARMOR DROP DEPLOYED", now);
+  }
+
+  private selectArmorSpawnPosition(): Vector3 {
+    const candidates = [
+      ...this.respawnPoints.player,
+      ...this.respawnPoints.bot,
+    ];
+    const playerPosition = this.playerController.camera.position;
+    const botPosition = this.bot.root.position;
+    const rankedCandidates = candidates
+      .map((spawn) => ({
+        position: spawn.position,
+        nearestCombatant: Math.min(
+          Vector3.Distance(spawn.position, playerPosition),
+          Vector3.Distance(spawn.position, botPosition),
+        ),
+      }))
+      .sort((left, right) => right.nearestCombatant - left.nearestCombatant);
+    const fairCandidate = rankedCandidates.find(
+      (candidate) => candidate.nearestCombatant >= ARMOR_SPAWN_MINIMUM_DISTANCE,
+    );
+    return (fairCandidate ?? rankedCandidates[0])?.position.clone() ?? Vector3.Zero();
+  }
+
   private clearSupplyPickups(): void {
     for (const pickup of this.supplyPickups) {
       pickup.mesh.dispose();
@@ -479,12 +636,26 @@ export class CombatSystem {
     this.supplyPickups.length = 0;
   }
 
+  private clearArmorPickup(): void {
+    this.armorPickup?.mesh.dispose();
+    this.armorPickup = null;
+  }
+
   private createSupplyMaterial(): StandardMaterial {
     const material = new StandardMaterial("bot-supply-material", this.scene);
     material.diffuseColor = new Color3(0.05, 0.65, 0.12);
     material.emissiveColor = new Color3(0.08, 0.9, 0.18);
     material.specularColor = new Color3(0.25, 0.75, 0.3);
     material.alpha = 0.82;
+    return material;
+  }
+
+  private createArmorMaterial(): StandardMaterial {
+    const material = new StandardMaterial("armor-pickup-material", this.scene);
+    material.diffuseColor = new Color3(0.04, 0.32, 0.58);
+    material.emissiveColor = new Color3(0.08, 0.68, 1);
+    material.specularColor = new Color3(0.45, 0.88, 1);
+    material.alpha = 0.86;
     return material;
   }
 
@@ -556,6 +727,10 @@ export class CombatSystem {
 
     this.hud.playerHealth.dataset.level = this.getHealthLevel(this.playerState.health);
     this.hud.botHealth.dataset.level = this.getHealthLevel(this.botState.health);
+    this.hud.playerArmor.textContent = `${this.armor} / ${ARMOR_CAPACITY}`;
+    this.hud.playerArmorFill.style.width = `${(this.armor / ARMOR_CAPACITY) * 100}%`;
+    this.hud.armorPanel.dataset.active = String(this.armor > 0);
+    this.hud.armorStatus.textContent = this.armor > 0 ? "Armor active" : "No armor";
   }
 
   private updateBotProtectionVisual(isProtected: boolean, now: number): void {

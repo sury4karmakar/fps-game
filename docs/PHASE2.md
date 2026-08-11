@@ -55,12 +55,12 @@ Phase 2 contains only the approved Must-do work. Should-do improvements and expl
 
 ### 6. Armor Pickup
 
-- [ ] Add a temporary armor pickup that can appear during a match.
-- [ ] Define armor capacity, pickup duration or lifetime, and damage-absorption rules.
-- [ ] Display current armor clearly in the HUD.
-- [ ] Add pickup availability, collection, expiration, and respawn behavior where applicable.
-- [ ] Add distinct audio and visual feedback for armor pickup and armor damage.
-- [ ] Ensure armor does not create unfair spawn or scoring behavior.
+- [x] Add a temporary armor pickup that can appear during a match.
+- [x] Define armor capacity, pickup duration or lifetime, and damage-absorption rules.
+- [x] Display current armor clearly in the HUD.
+- [x] Add pickup availability, collection, expiration, and respawn behavior where applicable.
+- [x] Add distinct audio and visual feedback for armor pickup and armor damage.
+- [x] Ensure armor does not create unfair spawn or scoring behavior.
 
 ### 7. Settings
 

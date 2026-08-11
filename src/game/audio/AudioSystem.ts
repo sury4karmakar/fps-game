@@ -122,6 +122,15 @@ export class AudioSystem {
     source.stop(now + 0.19);
   }
 
+  public playArmorPickup(): void {
+    this.playTone(440, 880, 0.16, 0.06, "sine");
+    this.schedule(95, () => this.playTone(660, 1_100, 0.14, 0.05, "triangle"));
+  }
+
+  public playArmorDamage(): void {
+    this.playTone(300, 210, 0.07, 0.04, "square");
+  }
+
   public playMatchStart(): void {
     this.playTone(330, 520, 0.12, 0.07, "triangle");
     this.schedule(105, () => this.playTone(520, 760, 0.13, 0.065, "triangle"));

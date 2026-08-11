@@ -463,6 +463,44 @@ body {
   background: linear-gradient(90deg, #ff5148, #ff9b65);
 }
 
+.armor-card {
+  border-color: rgb(90 187 255 / 22%);
+}
+
+.armor-card .health-name i {
+  background: #58c8ff;
+  box-shadow: 0 0 9px rgb(72 192 255 / 80%);
+}
+
+.armor-fill {
+  background: linear-gradient(90deg, #217fc1, #66d4ff);
+}
+
+.armor-status {
+  display: block;
+  margin-top: 6px;
+  color: #7690a3;
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.armor-card[data-active="true"] .armor-status {
+  color: #75d5ff;
+}
+
+.armor-card.is-damaged {
+  animation: armor-hit 180ms ease-out 2;
+}
+
+@keyframes armor-hit {
+  50% {
+    border-color: #b5edff;
+    box-shadow: 0 0 18px rgb(82 204 255 / 70%);
+  }
+}
+
 #ammo-panel {
   position: absolute;
   right: 24px;
