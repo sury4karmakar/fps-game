@@ -6,14 +6,6 @@ Arena Strike is a browser-based, single-player first-person shooter in which one
 
 The first-playable definition is complete: the player can open the game, start a match, move through a 3D arena, fight one bot, see both scores and the clock, and receive the correct winner/draw result.
 
-## Technology and foundation
-
-- TypeScript source with strict, no-output checking through `tsconfig.json`.
-- Vite development and production build tooling.
-- Babylon.js for scene rendering, cameras, input, collisions, raycasts, particles, audio, and GUI.
-- Babylon collision handling for player/world collision and gravity.
-- Browser canvas, engine, scene, render loop, resize handling, loading state, and runtime error state.
-
 ## Completed implementation by module
 
 ### 1. Project Foundation
@@ -140,7 +132,7 @@ Audio is generated and played through Web Audio-based effects for gunfire, reloa
 - Combat stops when the timer reaches zero.
 - Match can be restarted from the result screen.
 
-## Phase 1 scope boundary
+## Scope boundary
 
 The following are intentionally not part of this completed phase:
 
