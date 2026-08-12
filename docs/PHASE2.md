@@ -20,6 +20,7 @@ Primary implementation: `src/game/config/gameConfig.ts`, `src/game/match/MatchMa
 ### 2. Bot difficulty and behavior
 
 - [x] Add data-driven Easy, Normal, and Hard difficulty presets.
+- [x] Include the selected bot difficulty in the Phase 2 HUD.
 - [x] Tune reaction time, accuracy, fire cadence, detection range, movement speed, and decision timing.
 - [x] Keep difficulty fair without hidden health or damage advantages.
 - [x] Add line-of-sight validation for pursuit, attack, and search behavior.
@@ -37,6 +38,7 @@ The Training Yard now provides validated patrol points, navigation points, cover
 - [x] Add number-key and mouse-wheel weapon switching.
 - [x] Track magazine and reserve ammunition independently for each weapon.
 - [x] Add weapon state and ammunition information to the HUD.
+- [x] Include equipped-weapon and reserve-ammunition information in the Phase 2 HUD.
 - [x] Add hold-to-ADS with right mouse button for all three weapons.
 - [x] Apply weapon-specific ADS FOV, first-person weapon positioning, and crosshair presentation.
 - [x] Cancel ADS safely during reload, weapon switching, pointer unlock, death, and match end.
@@ -51,6 +53,7 @@ ADS field-of-view values are 0.64 radians for the Assault Rifle, 0.73 for the Sc
 - [x] Define 75 armor capacity, 60% damage absorption, 24-second duration, pickup lifetime, and respawn timing.
 - [x] Display armor amount and active duration in the HUD.
 - [x] Add armor pickup, armor damage, armor depletion, and expiration feedback.
+- [x] Include armor status in the Phase 2 HUD and add distinct audio feedback for armor and pickups.
 - [x] Improve weapon fire, reload, switching, bot movement, damage, death, and pickup feedback.
 - [x] Preserve reduced-motion behavior.
 
