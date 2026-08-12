@@ -63,8 +63,6 @@ Primary implementation: `src/game/combat/CombatSystem.ts`, `src/game/weapon/Weap
 - [x] Add Performance, Balanced, and High graphics presets.
 - [x] Apply settings immediately and reflect active values in the UI.
 - [x] Preserve pointer lock, input, rendering, audio initialization, and resize behavior.
-- [x] Handle denied pointer-lock requests without turning them into unhandled runtime errors.
-- [x] Fix Vite development loading for Babylon’s dynamically imported shadow shaders.
 
 Primary implementation: `src/game/settings/SettingsManager.ts`, `src/game/player/PlayerController.ts`, `src/game/GameApplication.ts`, and `vite.config.ts`.
 
