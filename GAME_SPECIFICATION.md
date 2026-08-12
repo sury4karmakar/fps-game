@@ -131,7 +131,3 @@ fps-game/
 - Online multiplayer, matchmaking, accounts, servers, anti-cheat, and network prediction.
 - Multiple maps, weapon inventories, teams, buy phases, ranked play, and persistent progression.
 - Advanced bot navigation or realistic character animation in the first playable release.
-
-## Definition of First Playable
-
-A player can open the browser game, start a five-minute match, move safely through a 3D arena, fight one bot, see both scores and the clock, and receive a correct winner/draw result at the end.
