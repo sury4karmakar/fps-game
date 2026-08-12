@@ -130,9 +130,12 @@ export class WeaponSystem {
     this.decalMaterial = this.createDecalMaterial();
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => this.update());
 
-    this.canvas.addEventListener("mousedown", this.handleMouseDown);
+    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
+    window.addEventListener("mousedown", this.handleMouseDown, true);
     this.canvas.addEventListener("contextmenu", this.preventContextMenu);
-    window.addEventListener("mouseup", this.handleMouseUp);
+    window.addEventListener("pointerup", this.handlePointerUp);
+    window.addEventListener("mouseup", this.handleMouseUp, true);
+    window.addEventListener("pointercancel", this.releaseTrigger);
     window.addEventListener("keydown", this.handleKeyDown, { passive: false });
     window.addEventListener("wheel", this.handleWheel, { passive: false });
     window.addEventListener("blur", this.releaseTrigger);
@@ -143,9 +146,12 @@ export class WeaponSystem {
 
   public dispose(): void {
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
-    this.canvas.removeEventListener("mousedown", this.handleMouseDown);
+    this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
+    window.removeEventListener("mousedown", this.handleMouseDown, true);
     this.canvas.removeEventListener("contextmenu", this.preventContextMenu);
-    window.removeEventListener("mouseup", this.handleMouseUp);
+    window.removeEventListener("pointerup", this.handlePointerUp);
+    window.removeEventListener("mouseup", this.handleMouseUp, true);
+    window.removeEventListener("pointercancel", this.releaseTrigger);
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("wheel", this.handleWheel);
     window.removeEventListener("blur", this.releaseTrigger);
@@ -226,23 +232,41 @@ export class WeaponSystem {
     return this.ammoByWeapon[this.equippedWeaponId];
   }
 
+  private readonly handlePointerDown = (event: PointerEvent): void => {
+    this.handleButtonDown(event);
+  };
+
   private readonly handleMouseDown = (event: MouseEvent): void => {
+    this.handleButtonDown(event);
+  };
+
+  private handleButtonDown(event: MouseEvent): void {
     if (!this.isEnabled || document.pointerLockElement !== this.canvas) return;
     if (event.button === 2) {
       event.preventDefault();
+      if (this.isAiming) return;
       this.isAiming = !this.isReloading && !this.isSwitching;
       return;
     }
     if (event.button !== 0) return;
     event.preventDefault();
+    if (this.isTriggerHeld) return;
     this.isTriggerHeld = true;
     this.tryFire(performance.now());
+  }
+
+  private readonly handlePointerUp = (event: PointerEvent): void => {
+    this.handleButtonUp(event);
   };
 
   private readonly handleMouseUp = (event: MouseEvent): void => {
+    this.handleButtonUp(event);
+  };
+
+  private handleButtonUp(event: MouseEvent): void {
     if (event.button === 0) this.isTriggerHeld = false;
     if (event.button === 2) this.isAiming = false;
-  };
+  }
 
   private readonly preventContextMenu = (event: MouseEvent): void => event.preventDefault();
 
