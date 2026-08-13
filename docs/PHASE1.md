@@ -1,8 +1,8 @@
-# Arena Strike — Phase 1
+# Open FPS — Phase 1
 
 ## Phase 1 outcome
 
-Arena Strike is a browser-based, single-player first-person shooter in which one human player fights one AI bot in a small indoor arena. A match lasts exactly five minutes (300 seconds). Each confirmed elimination awards one kill, combatants respawn after a short delay at safe spawn points, and the higher score wins. Equal scores produce a draw.
+Open FPS is a browser-based, single-player first-person shooter in which one human player fights one AI bot in a small indoor arena. A match lasts exactly five minutes (300 seconds). Each confirmed elimination awards one kill, combatants respawn after a short delay at safe spawn points, and the higher score wins. Equal scores produce a draw.
 
 The first-playable definition is complete: the player can open the game, start a match, move through a 3D arena, fight one bot, see both scores and the clock, and receive the correct winner/draw result.
 

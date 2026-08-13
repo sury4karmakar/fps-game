@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Arena Strike - a lightweight browser FPS built with Babylon.js" />
-    <title>Arena Strike</title>
+    <meta name="description" content="Open FPS - a lightweight browser FPS built with Babylon.js" />
+    <title data-game-name>Open FPS</title>
   </head>
   <body>
     <main id="game-shell">
-      <canvas id="game-canvas" aria-label="Arena Strike game viewport" tabindex="0"></canvas>
+      <canvas id="game-canvas" aria-label="Open FPS game viewport" tabindex="0"></canvas>
 
       <section id="weapon-hud" aria-label="Weapon status">
         <div id="damage-overlay" aria-hidden="true"></div>
@@ -182,7 +182,7 @@
 
       <section id="status-overlay" class="status-overlay" role="status" aria-live="polite">
         <div class="status-card">
-          <p class="eyebrow">Arena Strike</p>
+          <p class="eyebrow" data-game-name>Open FPS</p>
           <h1 id="status-title">Loading game</h1>
           <p id="status-message">Preparing the Babylon.js scene...</p>
           <div id="loading-indicator" class="loading-indicator" aria-hidden="true"></div>

@@ -7,6 +7,7 @@ import type { CombatSystem } from "../combat/CombatSystem";
 import {
   DEFAULT_BOT_DIFFICULTY_ID,
   getBotDifficultyDefinition,
+  GAME_NAME,
   type BotDifficultyDefinition,
   type BotDifficultyId,
 } from "../config/gameConfig";
@@ -125,7 +126,7 @@ export class BotAI {
       coverPoints.length === 0
     ) {
       throw new Error(
-        "Arena Strike requires bot patrol, navigation, and cover points.",
+        `${GAME_NAME} requires bot patrol, navigation, and cover points.`,
       );
     }
 

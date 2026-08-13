@@ -2,7 +2,7 @@ import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
 import type { AudioHudElements } from "./game/audio/AudioSystem";
 import type { CombatHudElements } from "./game/combat/CombatSystem";
-import { DEFAULT_MATCH_CONFIGURATION } from "./game/config/gameConfig";
+import { DEFAULT_MATCH_CONFIGURATION, GAME_NAME } from "./game/config/gameConfig";
 import type { MatchHudElements } from "./game/match/MatchManager";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
 import type { SettingsHudElements } from "./game/settings/SettingsManager";
@@ -13,7 +13,7 @@ function requireElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
 
   if (!element) {
-    throw new Error(`Arena Strike could not find the required element: ${selector}`);
+    throw new Error(`${GAME_NAME} could not find the required element: ${selector}`);
   }
 
   return element;
@@ -74,6 +74,17 @@ const settingsHud: SettingsHudElements = {
   graphicsQuality: requireElement<HTMLSelectElement>("#graphics-quality"),
   graphicsQualityValue: requireElement<HTMLElement>("#graphics-quality-value"),
 };
+
+document.title = GAME_NAME;
+document.querySelectorAll<HTMLElement>("[data-game-name]").forEach((element) => {
+  element.textContent = GAME_NAME;
+});
+document
+  .querySelector<HTMLCanvasElement>("#game-canvas")
+  ?.setAttribute("aria-label", `${GAME_NAME} game viewport`);
+document
+  .querySelector<HTMLMetaElement>('meta[name="description"]')
+  ?.setAttribute("content", `${GAME_NAME} - a lightweight browser FPS built with Babylon.js`);
 
 let application: GameApplication | null = null;
 
@@ -136,7 +147,7 @@ async function launchGame(): Promise<void> {
     await application.start();
     setStatus("ready", "Ready", "The game foundation is running.");
   } catch (error) {
-    console.error("Failed to start Arena Strike:", error);
+    console.error(`Failed to start ${GAME_NAME}:`, error);
     application?.dispose();
     application = null;
     setStatus(

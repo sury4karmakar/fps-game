@@ -15,6 +15,7 @@ import "@babylonjs/core/Shaders/outline.fragment.js";
 import "@babylonjs/core/Shaders/outline.vertex.js";
 import type { ArenaSpawnPoint } from "../arena/arenaTypes";
 import type { AudioSystem } from "../audio/AudioSystem";
+import { GAME_NAME } from "../config/gameConfig";
 import type { PlayerController } from "../player/PlayerController";
 
 const MAX_HEALTH = 100;
@@ -231,7 +232,7 @@ export class CombatSystem {
     const botSpawn = this.respawnPoints.bot[0];
 
     if (!playerSpawn || !botSpawn) {
-      throw new Error("Arena Strike requires player and bot match spawns.");
+      throw new Error(`${GAME_NAME} requires player and bot match spawns.`);
     }
 
     this.resetState(this.playerState, now);
@@ -719,7 +720,7 @@ export class CombatSystem {
     const firstCandidate = candidates[0];
 
     if (!firstCandidate) {
-      throw new Error("Arena Strike requires at least one respawn point.");
+      throw new Error(`${GAME_NAME} requires at least one respawn point.`);
     }
 
     let safestSpawn = firstCandidate;
@@ -820,7 +821,7 @@ export class CombatSystem {
 
   private createBotModel(spawnPoint: ArenaSpawnPoint | undefined): BotModel {
     if (!spawnPoint) {
-      throw new Error("Arena Strike requires an initial bot spawn point.");
+      throw new Error(`${GAME_NAME} requires an initial bot spawn point.`);
     }
 
     const collisionBody = CreateBox(

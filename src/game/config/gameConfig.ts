@@ -1,3 +1,6 @@
+/** The user-facing game name. Update this value to rename the application. */
+export const GAME_NAME = "Open FPS";
+
 export type WeaponId = "assault-rifle" | "scattergun" | "marksman-rifle";
 
 export type WeaponFireMode = "automatic" | "semi-automatic";

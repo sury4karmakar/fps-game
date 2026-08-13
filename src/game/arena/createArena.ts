@@ -8,6 +8,7 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import type { Scene } from "@babylonjs/core/scene.js";
+import { GAME_NAME } from "../config/gameConfig";
 import { createEnvironment } from "./createEnvironment";
 import type {
   ArenaBuildResult,
@@ -33,7 +34,7 @@ function assertArenaPoint(
     Math.abs(point.x) >= halfWidth - WALL_THICKNESS ||
     Math.abs(point.z) >= halfDepth - WALL_THICKNESS
   ) {
-    throw new Error(`Arena Strike has an invalid ${label} point.`);
+    throw new Error(`${GAME_NAME} has an invalid ${label} point.`);
   }
 }
 
@@ -53,14 +54,14 @@ function validateArenaTacticalData(
     navigationPoints.length === 0 ||
     coverPoints.length === 0
   ) {
-    throw new Error("Arena Strike requires complete spawn and tactical point data.");
+    throw new Error(`${GAME_NAME} requires complete spawn and tactical point data.`);
   }
 
   const spawnIds = new Set<string>();
 
   for (const spawn of [...playerRespawns, ...botRespawns]) {
     if (spawnIds.has(spawn.id)) {
-      throw new Error(`Arena Strike has a duplicate spawn id: ${spawn.id}.`);
+      throw new Error(`${GAME_NAME} has a duplicate spawn id: ${spawn.id}.`);
     }
 
     spawnIds.add(spawn.id);
@@ -78,7 +79,7 @@ function validateArenaTacticalData(
 
   for (const coverPoint of coverPoints) {
     if (coverIds.has(coverPoint.id)) {
-      throw new Error(`Arena Strike has a duplicate cover id: ${coverPoint.id}.`);
+      throw new Error(`${GAME_NAME} has a duplicate cover id: ${coverPoint.id}.`);
     }
 
     coverIds.add(coverPoint.id);

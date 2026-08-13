@@ -1,8 +1,8 @@
-# Arena Strike - Game Specification
+# Open FPS - Game Specification
 
 ## Product Summary
 
-Arena Strike is a compact, skill-focused first-person shooter that runs in a modern desktop browser. The player competes against one computer-controlled opponent in a small indoor arena. The goal is a responsive, replayable prototype rather than a full commercial Counter-Strike clone.
+Open FPS is a compact, skill-focused first-person shooter that runs in a modern desktop browser. The player competes against one computer-controlled opponent in a small indoor arena. The goal is a responsive, replayable prototype rather than a full commercial Counter-Strike clone.
 
 | Item | Specification |
 |---|---|

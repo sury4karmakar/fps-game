@@ -1,4 +1,4 @@
-# Arena Strike — Task Backlog
+# Open FPS — Task Backlog
 
 ## Phase 3: Second Arena and Map Selection
 
