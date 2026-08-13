@@ -67,7 +67,7 @@ export class GameApplication {
       true,
     );
 
-    const gameScene = createScene(
+    const gameScene = await createScene(
       this.engine,
       this.canvas,
       this.weaponHud,

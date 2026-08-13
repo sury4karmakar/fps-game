@@ -30,12 +30,12 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 2. Map registry and shared arena contracts (`src/game/arena/`)
 
-- [ ] Create `mapRegistry.ts` as the only shared entry point for map construction.
-- [ ] Define a typed dynamic-import function for each map builder.
-- [ ] Ensure the registry exposes lightweight map metadata without importing map assets.
-- [ ] Keep `ArenaBuildResult` sufficient for all shared gameplay systems.
-- [ ] Define and enforce shared validation for spawn, patrol, navigation, and cover data.
-- [ ] Confirm validation errors identify the selected map and invalid data clearly.
+- [x] Create `mapRegistry.ts` as the only shared entry point for map construction.
+- [x] Define a typed dynamic-import function for each implemented map builder.
+- [x] Ensure the registry exposes lightweight map metadata without importing map assets.
+- [x] Keep `ArenaBuildResult` sufficient for all shared gameplay systems.
+- [x] Define and enforce shared validation for spawn, patrol, navigation, and cover data.
+- [x] Confirm validation errors identify the selected map and invalid data clearly.
 
 ### 3. Training Yard migration (`src/game/arena/trainingYard/`)
 

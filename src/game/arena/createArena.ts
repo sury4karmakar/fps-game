@@ -10,6 +10,9 @@ import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import { GAME_NAME } from "../config/gameConfig";
 import { createEnvironment } from "./createEnvironment";
+import {
+  validateArenaBuildResult,
+} from "./arenaTypes";
 import type {
   ArenaBuildResult,
   ArenaCoverPoint,
@@ -520,7 +523,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
   createSpawnPad(scene, playerSpawn, new Color3(0.15, 0.75, 1));
   createSpawnPad(scene, botSpawn, new Color3(1, 0.28, 0.18));
 
-  return {
+  const arena: ArenaBuildResult = {
     id: "training-yard",
     shadowGenerator,
     collidableMeshes,
@@ -536,4 +539,7 @@ export function createArena(scene: Scene): ArenaBuildResult {
       bot: botRespawnPoints,
     },
   };
+
+  validateArenaBuildResult("training-yard", arena);
+  return arena;
 }

@@ -1,7 +1,7 @@
 import type { Engine } from "@babylonjs/core/Engines/engine.js";
 import type { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator.js";
 import { Scene } from "@babylonjs/core/scene.js";
-import { createArena } from "./arena/createArena";
+import { loadArena } from "./arena/mapRegistry";
 import { AudioSystem, type AudioHudElements } from "./audio/AudioSystem";
 import { BotAI } from "./bot/BotAI";
 import { CombatSystem, type CombatHudElements } from "./combat/CombatSystem";
@@ -26,7 +26,7 @@ export interface SceneBuildResult {
   readonly shadowGenerator: ShadowGenerator;
 }
 
-export function createScene(
+export async function createScene(
   engine: Engine,
   canvas: HTMLCanvasElement,
   weaponHud: WeaponHudElements,
@@ -35,7 +35,7 @@ export function createScene(
   audioHud: AudioHudElements,
   matchDurationMs?: number,
   matchConfiguration: MatchConfiguration = DEFAULT_MATCH_CONFIGURATION,
-): SceneBuildResult {
+): Promise<SceneBuildResult> {
   const selectedMap = getArenaMapDefinition(matchConfiguration.selectedMapId);
 
   if (!isArenaMapAvailable(matchConfiguration.selectedMapId)) {
@@ -49,7 +49,7 @@ export function createScene(
     ...(scene.metadata as Record<string, unknown> | null),
     matchConfiguration,
   };
-  const arena = createArena(scene);
+  const arena = await loadArena(matchConfiguration.selectedMapId, scene);
   const audioSystem = new AudioSystem(audioHud);
   const playerController = new PlayerController(
     scene,
