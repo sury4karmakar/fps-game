@@ -166,6 +166,11 @@ export const ARENA_MAP_DEFINITIONS: Readonly<
   },
 };
 
+/** Ordered map metadata for pre-match selection UI and map registries. */
+export const ARENA_MAPS: readonly ArenaMapDefinition[] = Object.values(
+  ARENA_MAP_DEFINITIONS,
+);
+
 export interface MapSelectionState {
   readonly selectedMapId: ArenaMapId;
 }
@@ -181,6 +186,10 @@ export const DEFAULT_MATCH_CONFIGURATION: Readonly<MatchConfiguration> = {
 
 export function isBotDifficultyId(value: string): value is BotDifficultyId {
   return value in BOT_DIFFICULTY_DEFINITIONS;
+}
+
+export function isArenaMapId(value: string): value is ArenaMapId {
+  return value in ARENA_MAP_DEFINITIONS;
 }
 
 export function getBotDifficultyDefinition(

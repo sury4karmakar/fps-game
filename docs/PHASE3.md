@@ -22,11 +22,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 1. Game configuration (`src/game/config/gameConfig.ts`)
 
-- [ ] Confirm `ArenaMapId` includes `training-yard` and `foundry`.
+- [x] Confirm `ArenaMapId` includes `training-yard` and `foundry`.
 - [ ] Mark both maps as available when Foundry is complete.
-- [ ] Keep map display names, descriptions, and availability in typed definitions.
-- [ ] Keep `DEFAULT_ARENA_MAP_ID` as a single configurable default.
-- [ ] Preserve typed `MatchConfiguration` with selected map and bot difficulty.
+- [x] Keep map display names, descriptions, and availability in typed definitions.
+- [x] Keep `DEFAULT_ARENA_MAP_ID` as a single configurable default.
+- [x] Preserve typed `MatchConfiguration` with selected map and bot difficulty.
 
 ### 2. Map registry and shared arena contracts (`src/game/arena/`)
 
