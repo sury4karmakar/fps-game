@@ -8,16 +8,14 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import type { Scene } from "@babylonjs/core/scene.js";
-import { GAME_NAME } from "../config/gameConfig";
-import { createEnvironment } from "./createEnvironment";
-import {
-  validateArenaBuildResult,
-} from "./arenaTypes";
+import { GAME_NAME } from "../../config/gameConfig";
+import { validateArenaBuildResult } from "../arenaTypes";
 import type {
   ArenaBuildResult,
   ArenaCoverPoint,
   ArenaSpawnPoint,
-} from "./arenaTypes";
+} from "../arenaTypes";
+import { createTrainingYardEnvironment } from "./createTrainingYardEnvironment";
 
 const ARENA_WIDTH = 36;
 const ARENA_DEPTH = 28;
@@ -193,10 +191,11 @@ function createSpawnPad(
   pad.material = padMaterial;
 }
 
-export function createArena(scene: Scene): ArenaBuildResult {
+/** Builds the procedural Training Yard arena and its map-specific environment. */
+export function createTrainingYard(scene: Scene): ArenaBuildResult {
   scene.collisionsEnabled = true;
 
-  const { shadowGenerator } = createEnvironment(scene);
+  const { shadowGenerator } = createTrainingYardEnvironment(scene);
   const collidableMeshes: AbstractMesh[] = [];
 
   const floorMaterial = createMaterial(
@@ -543,3 +542,6 @@ export function createArena(scene: Scene): ArenaBuildResult {
   validateArenaBuildResult("training-yard", arena);
   return arena;
 }
+
+/** Common map-registry export; each lazy-loaded map provides this signature. */
+export const createArena = createTrainingYard;

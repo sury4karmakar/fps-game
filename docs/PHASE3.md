@@ -39,10 +39,10 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 3. Training Yard migration (`src/game/arena/trainingYard/`)
 
-- [ ] Move the existing Training Yard builder into its own map module.
-- [ ] Preserve current geometry, collision, environment, spawn points, cover, and bot route behavior.
-- [ ] Move Training Yard-specific asset references and helpers into the map module.
-- [ ] Verify Training Yard is dynamically imported rather than constructed from a startup import.
+- [x] Move the existing Training Yard builder into its own map module.
+- [x] Preserve current geometry, collision, environment, spawn points, cover, and bot route behavior.
+- [x] Move Training Yard-specific asset references and helpers into the map module.
+- [x] Verify Training Yard is dynamically imported rather than constructed from a startup import.
 - [ ] Complete a gameplay regression pass to ensure the refactor causes no behavior change.
 
 ### 4. Foundry arena (`src/game/arena/foundry/`)

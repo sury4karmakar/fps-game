@@ -29,7 +29,7 @@ export interface MapRegistryEntry {
 export const MAP_REGISTRY: Readonly<Record<ArenaMapId, MapRegistryEntry>> = {
   "training-yard": {
     definition: getArenaMapDefinition("training-yard"),
-    load: () => import("./createArena"),
+    load: () => import("./trainingYard/createTrainingYard"),
   },
   foundry: {
     definition: getArenaMapDefinition("foundry"),

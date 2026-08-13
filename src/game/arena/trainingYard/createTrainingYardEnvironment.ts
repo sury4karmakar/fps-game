@@ -6,12 +6,17 @@ import { Color3, Color4 } from "@babylonjs/core/Maths/math.color.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.pure.js";
 import type { Scene } from "@babylonjs/core/scene.js";
+import "@babylonjs/core/Shaders/shadowMap.fragment.js";
+import "@babylonjs/core/Shaders/shadowMap.vertex.js";
 
-export interface ArenaEnvironment {
+export interface TrainingYardEnvironment {
   readonly shadowGenerator: ShadowGenerator;
 }
 
-export function createEnvironment(scene: Scene): ArenaEnvironment {
+/** Creates lighting, sky, fog, and shadows owned by the Training Yard map. */
+export function createTrainingYardEnvironment(
+  scene: Scene,
+): TrainingYardEnvironment {
   const skyColor = new Color3(0.13, 0.22, 0.32);
   scene.clearColor = new Color4(skyColor.r, skyColor.g, skyColor.b, 1);
   scene.ambientColor = new Color3(0.08, 0.1, 0.13);
