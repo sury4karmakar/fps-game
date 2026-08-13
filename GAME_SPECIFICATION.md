@@ -52,6 +52,58 @@ The ADS transition also updates the crosshair and first-person weapon transform 
 | Assets | Blender + glTF/GLB | Create and export the arena, weapon, and bot models |
 | Audio | Babylon.js audio | Gunfire, reload, hit, footsteps, and match UI feedback |
 
+## Extensible Map Loading Architecture
+
+Open FPS uses a lazy-loaded, map-isolated arena architecture. Shared game systems load once when the application starts, but map code and map assets load only after the player selects a map. This keeps unselected arenas out of the active scene and supports additional maps without loading every arena into memory at startup.
+
+### Loading lifecycle
+
+```text
+Open FPS starts
+  -> Load shared engine, HUD, player, weapon, bot, audio, settings, and match systems
+  -> Show the pre-match map-selection screen
+  -> Player selects a map
+  -> Dynamically import the selected map module
+  -> Load the selected map's GLB models, textures, materials, and environment assets
+  -> Create and play one arena scene
+  -> Dispose the current scene before creating a different selected map
+```
+
+The map-selection screen may load lightweight metadata for every map, such as its ID, display name, description, and optional thumbnail. It must not preload map geometry, GLB models, textures, collision data, or environment assets for unselected maps.
+
+### Map module contract
+
+Each map is a self-contained module that owns its geometry, GLB models, textures, materials, lighting, collision meshes, spawn points, patrol points, navigation points, cover points, and other map-specific data. Every map must return the shared `ArenaBuildResult` contract so the player, combat, bot, weapon, and match systems remain map-agnostic.
+
+```text
+src/game/arena/
+├── arenaTypes.ts                Shared ArenaBuildResult and arena data contracts
+├── mapRegistry.ts               Lightweight metadata and dynamic map import functions
+├── trainingYard/
+│   ├── createTrainingYard.ts    Training Yard builder
+│   └── assets.ts                Training Yard asset references and loading helpers
+└── foundry/
+    ├── createFoundry.ts         Foundry builder
+    └── assets.ts                Foundry asset references and loading helpers
+```
+
+`mapRegistry.ts` is the only shared entry point for map construction. It must use dynamic imports for map builders so Vite emits separate map chunks. A new map should require only its own module/assets, lightweight registry metadata, and shared-contract validation; it should not require changes to the core gameplay systems.
+
+### Runtime and caching rules
+
+- Only the currently selected map may be constructed in the Babylon scene.
+- Changing maps or starting a match on a different map disposes the previous scene and its map resources before creating the next one.
+- The browser may cache previously downloaded map code and assets, allowing later selections to load faster, but a new scene is created for each match.
+- The application must show a loading state while the selected map module and its assets are loading.
+- Map assets must not be statically imported by the startup path or preloaded for maps the player has not selected.
+
+### Map acceptance criteria
+
+- Selecting one map does not download or construct another map's geometry or assets.
+- Each map supplies valid spawn, patrol, navigation, and cover data through `ArenaBuildResult`.
+- Each map passes collision, visibility, respawn-safety, bot-navigation, performance, and full-match verification.
+- Adding a future third or fourth map follows the same module-and-registry pattern without expanding the initial scene memory footprint.
+
 ## Project Folders and Files
 
 The source code is organized by gameplay responsibility. `src/main.ts` starts the game, `src/game/createScene.ts` connects all systems, and each subfolder under `src/game/` owns one part of the match.
