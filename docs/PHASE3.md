@@ -23,7 +23,7 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 ### 1. Game configuration (`src/game/config/gameConfig.ts`)
 
 - [x] Confirm `ArenaMapId` includes `training-yard` and `foundry`.
-- [ ] Mark both maps as available when Foundry is complete.
+- [x] Mark both maps as available when Foundry is complete.
 - [x] Keep map display names, descriptions, and availability in typed definitions.
 - [x] Keep `DEFAULT_ARENA_MAP_ID` as a single configurable default.
 - [x] Preserve typed `MatchConfiguration` with selected map and bot difficulty.
@@ -47,16 +47,16 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 4. Foundry arena (`src/game/arena/foundry/`)
 
-- [ ] Design a clearly different indoor industrial layout from Training Yard.
-- [ ] Build floor, boundary walls, ceilings where appropriate, and collision-ready geometry.
-- [ ] Add distinct combat spaces, cover objects, sightlines, and at least one elevation or ramp route.
-- [ ] Create Foundry-specific environment, lighting, fog, and shadow configuration.
-- [ ] Add Foundry-owned GLB asset references/loading helpers when production assets are introduced.
-- [ ] Add safe player spawn points and bot spawn points.
-- [ ] Add patrol points, navigation points, and cover points for bot behavior.
-- [ ] Validate every Foundry point against the shared arena contract.
-- [ ] Tune spawn safety so respawning combatants are not immediately exposed.
-- [ ] Verify collision boundaries prevent leaving the playable space.
+- [x] Design a clearly different indoor industrial layout from Training Yard.
+- [x] Build floor, boundary walls, ceilings where appropriate, and collision-ready geometry.
+- [x] Add distinct combat spaces, cover objects, sightlines, and at least one elevation or ramp route.
+- [x] Create Foundry-specific environment, lighting, fog, and shadow configuration.
+- [x] Add Foundry-owned GLB asset references/loading helpers when production assets are introduced.
+- [x] Add safe player spawn points and bot spawn points.
+- [x] Add patrol points, navigation points, and cover points for bot behavior.
+- [x] Validate every Foundry point against the shared arena contract.
+- [x] Tune spawn safety so respawning combatants are not immediately exposed.
+- [x] Verify collision boundaries prevent leaving the playable space.
 
 ### 5. Scene composition and application lifecycle (`src/game/createScene.ts`, `src/game/GameApplication.ts`)
 

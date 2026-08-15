@@ -10,7 +10,9 @@ import {
   type ArenaBuildResult,
 } from "./arenaTypes";
 
-export type ArenaBuilder = (scene: Scene) => ArenaBuildResult;
+export type ArenaBuilder = (
+  scene: Scene,
+) => ArenaBuildResult | Promise<ArenaBuildResult>;
 
 interface ArenaModule {
   readonly createArena: ArenaBuilder;
@@ -33,6 +35,7 @@ export const MAP_REGISTRY: Readonly<Record<ArenaMapId, MapRegistryEntry>> = {
   },
   foundry: {
     definition: getArenaMapDefinition("foundry"),
+    load: () => import("./foundry/createFoundry"),
   },
 };
 
@@ -54,7 +57,7 @@ export async function loadArena(
   }
 
   const module = await entry.load();
-  const arena = module.createArena(scene);
+  const arena = await module.createArena(scene);
   validateArenaBuildResult(mapId, arena);
   return arena;
 }

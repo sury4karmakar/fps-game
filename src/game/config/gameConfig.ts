@@ -147,7 +147,7 @@ export interface ArenaMapDefinition {
   readonly availability: ArenaMapAvailability;
 }
 
-export const DEFAULT_ARENA_MAP_ID: ArenaMapId = "training-yard";
+export const DEFAULT_ARENA_MAP_ID: ArenaMapId = "foundry";
 
 export const ARENA_MAP_DEFINITIONS: Readonly<
   Record<ArenaMapId, ArenaMapDefinition>
@@ -161,8 +161,9 @@ export const ARENA_MAP_DEFINITIONS: Readonly<
   foundry: {
     id: "foundry",
     displayName: "Foundry",
-    description: "A planned industrial arena with a distinct combat layout.",
-    availability: "planned",
+    description:
+      "An industrial arena with a furnace ring, service lanes, and a raised loading dock.",
+    availability: "available",
   },
 };
 
