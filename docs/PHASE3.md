@@ -60,12 +60,12 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 5. Scene composition and application lifecycle (`src/game/createScene.ts`, `src/game/GameApplication.ts`)
 
-- [ ] Resolve the selected map through `mapRegistry.ts` before constructing the arena.
-- [ ] Await selected map-module loading before creating map-dependent systems.
-- [ ] Keep loading/error handling clear if a selected map or its assets fail to load.
-- [ ] Create the scene only after the selected map is available.
-- [ ] Dispose the previous map scene and resources before starting a match on another map.
-- [ ] Preserve resize handling, render-loop lifecycle, graphics-quality settings, and full application disposal.
+- [x] Resolve the selected map through `mapRegistry.ts` before constructing the arena.
+- [x] Await selected map-module loading before creating map-dependent systems.
+- [x] Keep loading/error handling clear if a selected map or its assets fail to load.
+- [x] Create the scene only after the selected map is available.
+- [x] Dispose the previous map scene and resources before starting a match on another map.
+- [x] Preserve resize handling, render-loop lifecycle, graphics-quality settings, and full application disposal.
 
 ### 6. Match flow and map selection (`src/game/match/MatchManager.ts`, `src/main.ts`, `index.html`)
 

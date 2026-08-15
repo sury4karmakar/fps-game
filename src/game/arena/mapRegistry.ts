@@ -43,11 +43,11 @@ export function getMapRegistryEntry(mapId: ArenaMapId): MapRegistryEntry {
   return MAP_REGISTRY[mapId];
 }
 
-/** Loads, builds, and validates exactly one selected map. */
-export async function loadArena(
-  mapId: ArenaMapId,
-  scene: Scene,
-): Promise<ArenaBuildResult> {
+/**
+ * Resolves the selected map builder without constructing a Babylon scene.
+ * This keeps unselected map modules and assets outside the startup path.
+ */
+export async function loadArenaBuilder(mapId: ArenaMapId): Promise<ArenaBuilder> {
   const entry = getMapRegistryEntry(mapId);
 
   if (!isArenaMapAvailable(mapId) || !entry.load) {
@@ -56,8 +56,24 @@ export async function loadArena(
     );
   }
 
-  const module = await entry.load();
-  const arena = await module.createArena(scene);
+  try {
+    const module = await entry.load();
+    return module.createArena;
+  } catch (error) {
+    const reason = error instanceof Error ? ` ${error.message}` : "";
+    throw new Error(
+      `Unable to load the ${entry.definition.displayName} map module.${reason}`,
+    );
+  }
+}
+
+/** Loads, builds, and validates exactly one selected map. */
+export async function loadArena(
+  mapId: ArenaMapId,
+  scene: Scene,
+): Promise<ArenaBuildResult> {
+  const createArena = await loadArenaBuilder(mapId);
+  const arena = await createArena(scene);
   validateArenaBuildResult(mapId, arena);
   return arena;
 }

@@ -1,7 +1,8 @@
 import type { Engine } from "@babylonjs/core/Engines/engine.js";
 import type { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator.js";
 import { Scene } from "@babylonjs/core/scene.js";
-import { loadArena } from "./arena/mapRegistry";
+import { validateArenaBuildResult } from "./arena/arenaTypes";
+import { loadArenaBuilder } from "./arena/mapRegistry";
 import { AudioSystem, type AudioHudElements } from "./audio/AudioSystem";
 import { BotAI } from "./bot/BotAI";
 import { CombatSystem, type CombatHudElements } from "./combat/CombatSystem";
@@ -44,78 +45,100 @@ export async function createScene(
     );
   }
 
+  const createArena = await loadArenaBuilder(matchConfiguration.selectedMapId);
   const scene = new Scene(engine);
-  scene.metadata = {
-    ...(scene.metadata as Record<string, unknown> | null),
-    matchConfiguration,
-  };
-  const arena = await loadArena(matchConfiguration.selectedMapId, scene);
-  const audioSystem = new AudioSystem(audioHud);
-  const playerController = new PlayerController(
-    scene,
-    canvas,
-    arena.spawnPoints.player,
-    arena.collidableMeshes,
-    (sprinting) => audioSystem.playFootstep(sprinting),
-  );
+  let audioSystem: AudioSystem | null = null;
+  let playerController: PlayerController | null = null;
+  let combatSystem: CombatSystem | null = null;
   let matchManager: MatchManager | null = null;
   let weaponSystem: WeaponSystem | null = null;
-  const combatSystem = new CombatSystem(
-    scene,
-    playerController,
-    arena.respawnPoints,
-    combatHud,
-    (killer) => matchManager?.recordKill(killer),
-    (amount) => weaponSystem?.addAmmo(amount) ?? 0,
-    audioSystem,
-  );
-  const botAI = new BotAI(
-    scene,
-    playerController,
-    combatSystem,
-    arena.botPatrolPoints,
-    arena.botNavigationPoints,
-    arena.botCoverPoints,
-    matchConfiguration.botDifficultyId,
-  );
-  weaponSystem = new WeaponSystem(
-    scene,
-    canvas,
-    playerController.camera,
-    weaponHud,
-    (mesh, damage) => combatSystem.applyWeaponHit(mesh, damage),
-    () => botAI.notifyPlayerShot(playerController.camera.position),
-    audioSystem,
-  );
-  matchManager = new MatchManager(
-    scene,
-    playerController,
-    combatSystem,
-    botAI,
-    weaponSystem,
-    audioSystem,
-    matchHud,
-    matchDurationMs,
-    matchConfiguration.botDifficultyId,
-    (botDifficultyId) => {
-      scene.metadata = {
-        ...(scene.metadata as Record<string, unknown> | null),
-        matchConfiguration: {
-          ...matchConfiguration,
-          botDifficultyId,
-        },
-      };
-    },
-  );
+  let botAI: BotAI | null = null;
 
-  return {
-    scene,
-    audioSystem,
-    playerController,
-    combatSystem,
-    botAI,
-    weaponSystem,
-    matchManager,
-    shadowGenerator: arena.shadowGenerator,
-  };
+  try {
+    const arena = await createArena(scene);
+    validateArenaBuildResult(matchConfiguration.selectedMapId, arena);
+    scene.metadata = {
+      ...(scene.metadata as Record<string, unknown> | null),
+      matchConfiguration,
+    };
+    audioSystem = new AudioSystem(audioHud);
+    playerController = new PlayerController(
+      scene,
+      canvas,
+      arena.spawnPoints.player,
+      arena.collidableMeshes,
+      (sprinting) => audioSystem?.playFootstep(sprinting),
+    );
+    combatSystem = new CombatSystem(
+      scene,
+      playerController,
+      arena.respawnPoints,
+      combatHud,
+      (killer) => matchManager?.recordKill(killer),
+      (amount) => weaponSystem?.addAmmo(amount) ?? 0,
+      audioSystem,
+    );
+    botAI = new BotAI(
+      scene,
+      playerController,
+      combatSystem,
+      arena.botPatrolPoints,
+      arena.botNavigationPoints,
+      arena.botCoverPoints,
+      matchConfiguration.botDifficultyId,
+    );
+    const initializedPlayerController = playerController;
+    const initializedCombatSystem = combatSystem;
+    const initializedBotAI = botAI;
+    weaponSystem = new WeaponSystem(
+      scene,
+      canvas,
+      initializedPlayerController.camera,
+      weaponHud,
+      (mesh, damage) => initializedCombatSystem.applyWeaponHit(mesh, damage),
+      () => initializedBotAI.notifyPlayerShot(initializedPlayerController.camera.position),
+      audioSystem,
+    );
+    matchManager = new MatchManager(
+      scene,
+      playerController,
+      combatSystem,
+      botAI,
+      weaponSystem,
+      audioSystem,
+      matchHud,
+      matchDurationMs,
+      matchConfiguration.botDifficultyId,
+      (botDifficultyId) => {
+        scene.metadata = {
+          ...(scene.metadata as Record<string, unknown> | null),
+          matchConfiguration: {
+            ...matchConfiguration,
+            botDifficultyId,
+          },
+        };
+      },
+    );
+
+    return {
+      scene,
+      audioSystem,
+      playerController,
+      combatSystem,
+      botAI,
+      weaponSystem,
+      matchManager,
+      shadowGenerator: arena.shadowGenerator,
+    };
+  } catch (error) {
+    matchManager?.dispose();
+    weaponSystem?.dispose();
+    botAI?.dispose();
+    combatSystem?.dispose();
+    playerController?.dispose();
+    audioSystem?.dispose();
+    scene.dispose();
+    const reason = error instanceof Error ? ` ${error.message}` : "";
+    throw new Error(`Unable to construct the ${selectedMap.displayName} arena.${reason}`);
+  }
 }

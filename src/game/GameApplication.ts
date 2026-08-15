@@ -34,6 +34,7 @@ export class GameApplication {
   private matchManager: MatchManager | null = null;
   private settingsManager: SettingsManager | null = null;
   private shadowGenerator: ShadowGenerator | null = null;
+  private isRenderLoopRunning = false;
 
   private readonly handleResize = (): void => {
     this.engine?.resize();
@@ -54,9 +55,14 @@ export class GameApplication {
   }
 
   private readonly matchDurationMs: number | undefined;
-  private readonly matchConfiguration: MatchConfiguration;
+  private matchConfiguration: MatchConfiguration;
 
   public async start(): Promise<void> {
+    if (this.engine) {
+      await this.loadMatch(this.matchConfiguration);
+      return;
+    }
+
     this.engine = new Engine(
       this.canvas,
       true,
@@ -67,42 +73,80 @@ export class GameApplication {
       true,
     );
 
-    const gameScene = await createScene(
-      this.engine,
-      this.canvas,
-      this.weaponHud,
-      this.combatHud,
-      this.matchHud,
-      this.audioHud,
-      this.matchDurationMs,
-      this.matchConfiguration,
-    );
-    this.scene = gameScene.scene;
-    this.audioSystem = gameScene.audioSystem;
-    this.playerController = gameScene.playerController;
-    this.combatSystem = gameScene.combatSystem;
-    this.botAI = gameScene.botAI;
-    this.weaponSystem = gameScene.weaponSystem;
-    this.matchManager = gameScene.matchManager;
-    this.shadowGenerator = gameScene.shadowGenerator;
-    this.settingsManager = new SettingsManager(
-      this.settingsHud,
-      gameScene.playerController,
-      gameScene.audioSystem,
-      { applyGraphicsQuality: this.applyGraphicsQuality },
-    );
-    await this.scene.whenReadyAsync();
+    try {
+      await this.loadMatch(this.matchConfiguration);
+      this.engine.runRenderLoop(() => this.scene?.render());
+      this.isRenderLoopRunning = true;
+      window.addEventListener("resize", this.handleResize);
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
+  }
 
-    this.engine.runRenderLoop(() => {
-      this.scene?.render();
-    });
+  /**
+   * Replaces the active arena and all map-bound gameplay systems. The engine,
+   * canvas, render loop, and HUD controls remain in place across map changes.
+   */
+  public async loadMatch(matchConfiguration: MatchConfiguration): Promise<void> {
+    if (!this.engine) {
+      throw new Error("The game engine must be started before loading a match.");
+    }
 
-    window.addEventListener("resize", this.handleResize);
+    this.disposeSceneResources();
+
+    let gameScene: Awaited<ReturnType<typeof createScene>> | null = null;
+    try {
+      gameScene = await createScene(
+        this.engine,
+        this.canvas,
+        this.weaponHud,
+        this.combatHud,
+        this.matchHud,
+        this.audioHud,
+        this.matchDurationMs,
+        matchConfiguration,
+      );
+      // Register resources before waiting so a readiness failure follows the
+      // same complete disposal path as any later scene replacement.
+      this.scene = gameScene.scene;
+      this.audioSystem = gameScene.audioSystem;
+      this.playerController = gameScene.playerController;
+      this.combatSystem = gameScene.combatSystem;
+      this.botAI = gameScene.botAI;
+      this.weaponSystem = gameScene.weaponSystem;
+      this.matchManager = gameScene.matchManager;
+      this.shadowGenerator = gameScene.shadowGenerator;
+      await gameScene.scene.whenReadyAsync();
+
+      this.settingsManager = new SettingsManager(
+        this.settingsHud,
+        gameScene.playerController,
+        gameScene.audioSystem,
+        { applyGraphicsQuality: this.applyGraphicsQuality },
+      );
+      this.matchConfiguration = matchConfiguration;
+    } catch (error) {
+      this.disposeSceneResources();
+      const reason = error instanceof Error ? ` ${error.message}` : "";
+      throw new Error(
+        `Unable to load the ${matchConfiguration.selectedMapId} match.${reason}`,
+      );
+    }
   }
 
   public dispose(): void {
     window.removeEventListener("resize", this.handleResize);
-    this.engine?.stopRenderLoop();
+    if (this.isRenderLoopRunning) {
+      this.engine?.stopRenderLoop();
+      this.isRenderLoopRunning = false;
+    }
+    this.disposeSceneResources();
+    this.engine?.dispose();
+    this.engine = null;
+  }
+
+  private disposeSceneResources(): void {
     this.matchManager?.dispose();
     this.settingsManager?.dispose();
     this.weaponSystem?.dispose();
@@ -111,7 +155,6 @@ export class GameApplication {
     this.playerController?.dispose();
     this.audioSystem?.dispose();
     this.scene?.dispose();
-    this.engine?.dispose();
     this.playerController = null;
     this.audioSystem = null;
     this.combatSystem = null;
@@ -121,7 +164,6 @@ export class GameApplication {
     this.settingsManager = null;
     this.shadowGenerator = null;
     this.scene = null;
-    this.engine = null;
   }
 
   private readonly applyGraphicsQuality = (quality: GraphicsQualityId): void => {
