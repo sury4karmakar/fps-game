@@ -69,14 +69,14 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 6. Match flow and map selection (`src/game/match/MatchManager.ts`, `src/main.ts`, `index.html`)
 
-- [ ] Add a pre-match map selector alongside the existing bot-difficulty selector.
-- [ ] Populate the selector from map configuration/registry metadata.
-- [ ] Disable or label unavailable maps until their builder is complete.
-- [ ] Pass the selected map ID into `MatchConfiguration` when starting a match.
-- [ ] Display the selected map name in the pre-match UI and/or match HUD.
-- [ ] Return to pre-match selection on restart so players can change map and difficulty.
-- [ ] Reset HUD, score, timer, pickup, and match state correctly after a map change.
-- [ ] Keep pointer lock and start-match behavior reliable during map loading.
+- [x] Add a pre-match map selector alongside the existing bot-difficulty selector.
+- [x] Populate the selector from map configuration/registry metadata.
+- [x] Disable or label unavailable maps until their builder is complete.
+- [x] Pass the selected map ID into `MatchConfiguration` when starting a match.
+- [x] Display the selected map name in the pre-match UI and/or match HUD.
+- [x] Return to pre-match selection on restart so players can change map and difficulty.
+- [x] Reset HUD, score, timer, pickup, and match state correctly after a map change.
+- [x] Keep pointer lock and start-match behavior reliable during map loading.
 
 ### 7. Bot and combat integration (`src/game/bot/`, `src/game/combat/`, `src/game/player/`, `src/game/weapon/`)
 

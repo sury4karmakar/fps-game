@@ -26,6 +26,7 @@
           <span id="match-state" data-state="waiting">Waiting</span>
           <strong id="match-timer">05:00</strong>
           <span id="match-difficulty" data-difficulty="normal">Normal</span>
+          <span id="match-map" data-map="foundry">Foundry</span>
         </section>
 
         <section id="score-panel" aria-label="Elimination score">
@@ -118,6 +119,12 @@
               <option value="normal" selected>Normal</option>
               <option value="hard">Hard</option>
             </select>
+          </label>
+
+          <label class="map-select start-only" for="match-map-select">
+            <span>Battlefield</span>
+            <select id="match-map-select" name="match-map" aria-describedby="match-map-description"></select>
+            <span id="match-map-description" class="map-description">Loading map details…</span>
           </label>
 
           <section class="settings-panel start-only" aria-label="Game settings">

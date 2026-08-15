@@ -336,6 +336,14 @@ body {
   text-transform: uppercase;
 }
 
+#match-map {
+  color: #ffc980;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 #match-difficulty[data-difficulty="easy"] {
   color: #93d9aa;
 }
@@ -742,7 +750,8 @@ body {
   text-transform: uppercase;
 }
 
-.difficulty-select {
+.difficulty-select,
+.map-select {
   display: grid;
   gap: 7px;
   margin: 0 0 18px;
@@ -754,7 +763,8 @@ body {
   text-transform: uppercase;
 }
 
-.difficulty-select select {
+.difficulty-select select,
+.map-select select {
   width: 100%;
   border: 1px solid rgb(126 214 255 / 38%);
   border-radius: 8px;
@@ -766,9 +776,19 @@ body {
   text-transform: none;
 }
 
-.difficulty-select select:focus-visible {
+.difficulty-select select:focus-visible,
+.map-select select:focus-visible {
   outline: 2px solid #7ed6ff;
   outline-offset: 2px;
+}
+
+.map-description {
+  color: #718697;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .settings-panel {
@@ -992,6 +1012,11 @@ kbd {
 
 .match-action-button:hover {
   background: #a1ddff;
+}
+
+.match-action-button:disabled {
+  cursor: progress;
+  opacity: 0.68;
 }
 
 .match-action-button:focus-visible {

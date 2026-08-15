@@ -9,7 +9,11 @@ import {
   DEFAULT_MATCH_CONFIGURATION,
   type MatchConfiguration,
 } from "./config/gameConfig";
-import type { MatchHudElements, MatchManager } from "./match/MatchManager";
+import type {
+  MatchHudElements,
+  MatchManager,
+  MatchStartRequestHandler,
+} from "./match/MatchManager";
 import type { PlayerController } from "./player/PlayerController";
 import type { WeaponHudElements, WeaponSystem } from "./weapon/WeaponSystem";
 import {
@@ -21,6 +25,7 @@ import {
 export interface GameApplicationOptions {
   readonly matchDurationMs?: number;
   readonly matchConfiguration?: MatchConfiguration;
+  readonly onMatchStartRequested?: MatchStartRequestHandler;
 }
 
 export class GameApplication {
@@ -52,10 +57,12 @@ export class GameApplication {
     this.matchDurationMs = options.matchDurationMs;
     this.matchConfiguration =
       options.matchConfiguration ?? DEFAULT_MATCH_CONFIGURATION;
+    this.onMatchStartRequested = options.onMatchStartRequested;
   }
 
   private readonly matchDurationMs: number | undefined;
   private matchConfiguration: MatchConfiguration;
+  private readonly onMatchStartRequested: MatchStartRequestHandler | undefined;
 
   public async start(): Promise<void> {
     if (this.engine) {
@@ -88,7 +95,10 @@ export class GameApplication {
    * Replaces the active arena and all map-bound gameplay systems. The engine,
    * canvas, render loop, and HUD controls remain in place across map changes.
    */
-  public async loadMatch(matchConfiguration: MatchConfiguration): Promise<void> {
+  public async loadMatch(
+    matchConfiguration: MatchConfiguration,
+    startImmediately = false,
+  ): Promise<void> {
     if (!this.engine) {
       throw new Error("The game engine must be started before loading a match.");
     }
@@ -106,6 +116,7 @@ export class GameApplication {
         this.audioHud,
         this.matchDurationMs,
         matchConfiguration,
+        this.onMatchStartRequested,
       );
       // Register resources before waiting so a readiness failure follows the
       // same complete disposal path as any later scene replacement.
@@ -126,6 +137,9 @@ export class GameApplication {
         { applyGraphicsQuality: this.applyGraphicsQuality },
       );
       this.matchConfiguration = matchConfiguration;
+      if (startImmediately) {
+        this.matchManager.startMatch();
+      }
     } catch (error) {
       this.disposeSceneResources();
       const reason = error instanceof Error ? ` ${error.message}` : "";

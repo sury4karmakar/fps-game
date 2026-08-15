@@ -2,7 +2,12 @@ import "./styles.css";
 import { GameApplication } from "./game/GameApplication";
 import type { AudioHudElements } from "./game/audio/AudioSystem";
 import type { CombatHudElements } from "./game/combat/CombatSystem";
-import { DEFAULT_MATCH_CONFIGURATION, GAME_NAME } from "./game/config/gameConfig";
+import {
+  DEFAULT_MATCH_CONFIGURATION,
+  GAME_NAME,
+  getArenaMapDefinition,
+  type MatchConfiguration,
+} from "./game/config/gameConfig";
 import type { MatchHudElements } from "./game/match/MatchManager";
 import type { WeaponHudElements } from "./game/weapon/WeaponSystem";
 import type { SettingsHudElements } from "./game/settings/SettingsManager";
@@ -60,6 +65,9 @@ const matchHud: MatchHudElements = {
   actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
   difficulty: requireElement<HTMLElement>("#match-difficulty"),
   difficultySelect: requireElement<HTMLSelectElement>("#match-difficulty-select"),
+  map: requireElement<HTMLElement>("#match-map"),
+  mapSelect: requireElement<HTMLSelectElement>("#match-map-select"),
+  mapDescription: requireElement<HTMLElement>("#match-map-description"),
 };
 const audioHud: AudioHudElements = {
   toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),
@@ -142,6 +150,7 @@ async function launchGame(): Promise<void> {
       {
         matchDurationMs: getDevelopmentMatchDurationMs(),
         matchConfiguration: DEFAULT_MATCH_CONFIGURATION,
+        onMatchStartRequested: loadSelectedMatch,
       },
     );
     await application.start();
@@ -155,6 +164,31 @@ async function launchGame(): Promise<void> {
       "Unable to start the game",
       `${describeError(error)} Check WebGL support and try again.`,
     );
+  }
+}
+
+async function loadSelectedMatch(configuration: MatchConfiguration): Promise<void> {
+  if (!application) {
+    throw new Error("The game is not ready to load a new match.");
+  }
+
+  const selectedMap = getArenaMapDefinition(configuration.selectedMapId);
+  setStatus(
+    "loading",
+    `Loading ${selectedMap.displayName}`,
+    "Resetting the match and loading the selected arena…",
+  );
+
+  try {
+    await application.loadMatch(configuration, true);
+    setStatus("ready", "Ready", `${selectedMap.displayName} is ready.`);
+  } catch (error) {
+    setStatus(
+      "error",
+      "Unable to load the selected map",
+      `${describeError(error)} Choose another map or try again.`,
+    );
+    throw error;
   }
 }
 

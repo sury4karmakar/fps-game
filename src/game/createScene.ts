@@ -12,7 +12,11 @@ import {
   isArenaMapAvailable,
   type MatchConfiguration,
 } from "./config/gameConfig";
-import { MatchManager, type MatchHudElements } from "./match/MatchManager";
+import {
+  MatchManager,
+  type MatchHudElements,
+  type MatchStartRequestHandler,
+} from "./match/MatchManager";
 import { PlayerController } from "./player/PlayerController";
 import { WeaponSystem, type WeaponHudElements } from "./weapon/WeaponSystem";
 
@@ -36,6 +40,7 @@ export async function createScene(
   audioHud: AudioHudElements,
   matchDurationMs?: number,
   matchConfiguration: MatchConfiguration = DEFAULT_MATCH_CONFIGURATION,
+  onMatchStartRequested?: MatchStartRequestHandler,
 ): Promise<SceneBuildResult> {
   const selectedMap = getArenaMapDefinition(matchConfiguration.selectedMapId);
 
@@ -108,16 +113,8 @@ export async function createScene(
       audioSystem,
       matchHud,
       matchDurationMs,
-      matchConfiguration.botDifficultyId,
-      (botDifficultyId) => {
-        scene.metadata = {
-          ...(scene.metadata as Record<string, unknown> | null),
-          matchConfiguration: {
-            ...matchConfiguration,
-            botDifficultyId,
-          },
-        };
-      },
+      matchConfiguration,
+      onMatchStartRequested,
     );
 
     return {
