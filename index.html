@@ -88,7 +88,7 @@
         Click to aim | RMB ADS | WASD move | Shift sprint | Left Ctrl crouch | Space jump | Left click fire | 1–3 / Wheel switch | R reload | Esc unlock
       </p>
 
-      <section id="match-overlay" class="match-overlay" data-state="waiting" aria-live="polite">
+      <section id="match-overlay" class="match-overlay" data-state="waiting" aria-live="polite" aria-busy="false">
         <div class="match-card">
           <div class="match-emblem" aria-hidden="true"><span></span></div>
           <p id="match-eyebrow" class="eyebrow">Five-minute duel</p>
@@ -123,8 +123,9 @@
 
           <label class="map-select start-only" for="match-map-select">
             <span>Battlefield</span>
-            <select id="match-map-select" name="match-map" aria-describedby="match-map-description"></select>
+            <select id="match-map-select" name="match-map" aria-describedby="match-map-description match-map-status"></select>
             <span id="match-map-description" class="map-description">Loading map details…</span>
+            <span id="match-map-status" class="visually-hidden" role="status" aria-live="polite"></span>
           </label>
 
           <section class="settings-panel start-only" aria-label="Game settings">
@@ -180,6 +181,9 @@
               <strong id="match-final-bot-score">0</strong>
             </div>
           </section>
+          <p id="match-loading-status" class="match-loading-status" role="status" aria-live="assertive" hidden>
+            Loading selected battlefield…
+          </p>
           <button id="match-action-button" class="match-action-button" type="button">
             Start Match
           </button>
@@ -187,7 +191,7 @@
         </div>
       </section>
 
-      <section id="status-overlay" class="status-overlay" role="status" aria-live="polite">
+      <section id="status-overlay" class="status-overlay" role="status" aria-live="polite" aria-busy="true">
         <div class="status-card">
           <p class="eyebrow" data-game-name>Open FPS</p>
           <h1 id="status-title">Loading game</h1>

@@ -45,6 +45,8 @@ export interface MatchHudElements {
   readonly map: HTMLElement;
   readonly mapSelect: HTMLSelectElement;
   readonly mapDescription: HTMLElement;
+  readonly mapStatus: HTMLElement;
+  readonly loadingStatus: HTMLElement;
 }
 
 export class MatchManager {
@@ -147,8 +149,10 @@ export class MatchManager {
     this.hud.state.textContent = "LIVE";
     this.hud.state.dataset.state = "playing";
     this.hud.overlay.dataset.state = "playing";
+    this.hud.overlay.setAttribute("aria-busy", "false");
     this.hud.difficultySelect.disabled = true;
     this.hud.mapSelect.disabled = true;
+    this.hud.loadingStatus.hidden = true;
   }
 
   private readonly handleAction = (): void => {
@@ -203,6 +207,7 @@ export class MatchManager {
     this.hud.state.textContent = "WAITING";
     this.hud.state.dataset.state = "waiting";
     this.hud.overlay.dataset.state = "waiting";
+    this.hud.overlay.setAttribute("aria-busy", "false");
     this.hud.eyebrow.textContent = "Five-minute duel";
     this.hud.title.textContent = "Ready for the match?";
     this.hud.message.textContent =
@@ -212,6 +217,7 @@ export class MatchManager {
     this.hud.actionButton.disabled = false;
     this.hud.difficultySelect.disabled = false;
     this.hud.mapSelect.disabled = false;
+    this.hud.loadingStatus.hidden = true;
     this.isLoadingMap = false;
     delete this.hud.overlay.dataset.result;
     this.updateSelectionHud();
@@ -242,6 +248,7 @@ export class MatchManager {
     this.hud.state.textContent = "FINISHED";
     this.hud.state.dataset.state = "finished";
     this.hud.overlay.dataset.state = "finished";
+    this.hud.overlay.setAttribute("aria-busy", "false");
     this.hud.overlay.dataset.result = result;
     this.hud.eyebrow.textContent = "Match complete";
     this.hud.title.textContent = resultCopy.title;
@@ -350,6 +357,9 @@ export class MatchManager {
     this.hud.actionButton.disabled = true;
     this.hud.actionButton.textContent = "Loading…";
     this.hud.overlay.dataset.state = "loading";
+    this.hud.overlay.setAttribute("aria-busy", "true");
+    this.hud.loadingStatus.hidden = false;
+    this.hud.loadingStatus.textContent = `Loading ${selectedMap.displayName}. Please wait.`;
     this.hud.eyebrow.textContent = "Loading battlefield";
     this.hud.title.textContent = `Preparing ${selectedMap.displayName}`;
     this.hud.message.textContent = "Loading the selected arena and resetting the match.";
@@ -370,6 +380,8 @@ export class MatchManager {
       this.hud.actionButton.disabled = false;
       this.hud.actionButton.textContent = "Try Again";
       this.hud.overlay.dataset.state = "waiting";
+      this.hud.overlay.setAttribute("aria-busy", "false");
+      this.hud.loadingStatus.hidden = true;
       this.hud.title.textContent = "Unable to load the battlefield";
       this.hud.message.textContent = error instanceof Error
         ? error.message
@@ -389,6 +401,9 @@ export class MatchManager {
     this.hud.mapDescription.textContent = this.isSelectableMap(map.id)
       ? map.description
       : `${map.description} This map is unavailable in this build.`;
+    this.hud.mapStatus.textContent = this.isSelectableMap(map.id)
+      ? `${map.displayName} selected. ${map.description}`
+      : `${map.displayName} is unavailable in this build.`;
     this.hud.eyebrow.textContent = `${map.displayName} · ${difficulty.displayName} bot`;
   }
 

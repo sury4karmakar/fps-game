@@ -89,11 +89,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 8. UI, loading, and accessibility (`index.html`, `src/main.ts`, `src/styles.css`)
 
-- [ ] Add visible feedback while the selected map is loading.
-- [ ] Make map selection keyboard accessible and provide an accessible label/description.
-- [ ] Preserve responsive and reduced-motion behavior for the updated start screen.
-- [ ] Ensure loading, unavailable-map, and asset-load failure messages are clear and actionable.
-- [ ] Add small accessibility fixes needed by the new controls and map-loading feedback.
+- [x] Add visible feedback while the selected map is loading.
+- [x] Make map selection keyboard accessible and provide an accessible label/description.
+- [x] Preserve responsive and reduced-motion behavior for the updated start screen.
+- [x] Ensure loading, unavailable-map, and asset-load failure messages are clear and actionable.
+- [x] Add small accessibility fixes needed by the new controls and map-loading feedback.
 
 ### 9. Developer test controls (optional after core completion)
 

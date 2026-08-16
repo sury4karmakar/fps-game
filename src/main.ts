@@ -68,6 +68,8 @@ const matchHud: MatchHudElements = {
   map: requireElement<HTMLElement>("#match-map"),
   mapSelect: requireElement<HTMLSelectElement>("#match-map-select"),
   mapDescription: requireElement<HTMLElement>("#match-map-description"),
+  mapStatus: requireElement<HTMLElement>("#match-map-status"),
+  loadingStatus: requireElement<HTMLElement>("#match-loading-status"),
 };
 const audioHud: AudioHudElements = {
   toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),
@@ -95,6 +97,7 @@ document
   ?.setAttribute("content", `${GAME_NAME} - a lightweight browser FPS built with Babylon.js`);
 
 let application: GameApplication | null = null;
+let retryConfiguration: MatchConfiguration = DEFAULT_MATCH_CONFIGURATION;
 
 function getDevelopmentMatchDurationMs(): number | undefined {
   if (!import.meta.env.DEV) {
@@ -109,9 +112,15 @@ function getDevelopmentMatchDurationMs(): number | undefined {
 
 function setStatus(state: StatusState, title: string, message: string): void {
   overlay.dataset.state = state;
+  overlay.setAttribute("aria-busy", String(state === "loading"));
+  overlay.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
   statusTitle.textContent = title;
   statusMessage.textContent = message;
   retryButton.hidden = state !== "error";
+
+  if (state === "error") {
+    window.requestAnimationFrame(() => retryButton.focus());
+  }
 }
 
 function describeError(error: unknown): string {
@@ -135,7 +144,9 @@ function describeError(error: unknown): string {
   return "An unexpected error occurred.";
 }
 
-async function launchGame(): Promise<void> {
+async function launchGame(
+  matchConfiguration: MatchConfiguration = retryConfiguration,
+): Promise<void> {
   setStatus("loading", "Loading game", "Preparing the Babylon.js scene...");
 
   try {
@@ -149,7 +160,7 @@ async function launchGame(): Promise<void> {
       settingsHud,
       {
         matchDurationMs: getDevelopmentMatchDurationMs(),
-        matchConfiguration: DEFAULT_MATCH_CONFIGURATION,
+        matchConfiguration,
         onMatchStartRequested: loadSelectedMatch,
       },
     );
@@ -173,6 +184,7 @@ async function loadSelectedMatch(configuration: MatchConfiguration): Promise<voi
   }
 
   const selectedMap = getArenaMapDefinition(configuration.selectedMapId);
+  retryConfiguration = configuration;
   setStatus(
     "loading",
     `Loading ${selectedMap.displayName}`,
@@ -186,14 +198,14 @@ async function loadSelectedMatch(configuration: MatchConfiguration): Promise<voi
     setStatus(
       "error",
       "Unable to load the selected map",
-      `${describeError(error)} Choose another map or try again.`,
+      `${describeError(error)} Retry will reload ${selectedMap.displayName}.`,
     );
     throw error;
   }
 }
 
 retryButton.addEventListener("click", () => {
-  void launchGame();
+  void launchGame(retryConfiguration);
 });
 
 window.addEventListener("error", (event) => {
