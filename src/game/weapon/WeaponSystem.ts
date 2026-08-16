@@ -11,6 +11,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import type { AudioSystem } from "../audio/AudioSystem";
+import { isArenaCollisionMesh } from "../arena/arenaTypes";
 import {
   DEFAULT_WEAPON_ID,
   WEAPON_DEFINITIONS,
@@ -91,6 +92,7 @@ export class WeaponSystem {
   private readonly models: Readonly<Record<WeaponId, WeaponModel>>;
   private readonly ammoByWeapon: Record<WeaponId, WeaponAmmoState>;
   private readonly updateObserver: Observer<Scene>;
+  private readonly arenaCollisionMeshes: ReadonlySet<AbstractMesh>;
 
   private equippedWeaponId: WeaponId = DEFAULT_WEAPON_ID;
   private isEnabled = true;
@@ -112,6 +114,7 @@ export class WeaponSystem {
     private readonly scene: Scene,
     private readonly canvas: HTMLCanvasElement,
     private readonly camera: FreeCamera,
+    collidableMeshes: readonly AbstractMesh[],
     private readonly hud: WeaponHudElements,
     private readonly resolveDamageHit: (
       mesh: AbstractMesh,
@@ -120,6 +123,7 @@ export class WeaponSystem {
     private readonly notifyWeaponFired: () => void,
     private readonly audioSystem: AudioSystem,
   ) {
+    this.arenaCollisionMeshes = new Set(collidableMeshes);
     this.models = {
       "assault-rifle": this.createWeaponModel("assault-rifle"),
       scattergun: this.createWeaponModel("scattergun"),
@@ -363,7 +367,7 @@ export class WeaponSystem {
     for (let pellet = 0; pellet < definition.projectilesPerShot; pellet += 1) {
       const ray = this.camera.getForwardRay(definition.range);
       ray.direction = this.applySpread(ray.direction, definition.spreadRadians);
-      const hit = this.scene.pickWithRay(ray, (mesh) => mesh.isPickable, false);
+      const hit = this.scene.pickWithRay(ray, this.isHitscanTarget, false);
       if (!hit?.hit || !hit.pickedPoint || !hit.pickedMesh) continue;
       const normal = hit.getNormal(true) ?? ray.direction.scale(-1);
       this.createImpact(hit.pickedPoint, normal, hit.pickedMesh);
@@ -532,8 +536,7 @@ export class WeaponSystem {
     impact.isPickable = false;
     impact.renderingGroupId = 1;
     this.impacts.push({ mesh: impact, createdAt });
-    const metadata = sourceMesh.metadata as { arenaCollision?: boolean } | null;
-    if (metadata?.arenaCollision === true) {
+    if (this.arenaCollisionMeshes.has(sourceMesh) && isArenaCollisionMesh(sourceMesh)) {
       this.createImpactDecal(position, normal, sourceMesh, createdAt);
     }
     for (let index = 0; index < 2; index += 1) {
@@ -606,6 +609,15 @@ export class WeaponSystem {
     this.decals.push({ mesh: decal, sourceMesh, position: position.clone(), createdAt });
     while (this.decals.length > MAX_DECALS) this.decals.shift()?.mesh.dispose();
   }
+
+  private readonly isHitscanTarget = (mesh: AbstractMesh): boolean => {
+    if (this.arenaCollisionMeshes.has(mesh) && isArenaCollisionMesh(mesh)) {
+      return true;
+    }
+
+    const metadata = mesh.metadata as { combatantId?: string } | null;
+    return metadata?.combatantId === "bot";
+  };
 
   private updateHud(): void {
     const definition = this.definition;

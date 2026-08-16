@@ -80,12 +80,12 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 
 ### 7. Bot and combat integration (`src/game/bot/`, `src/game/combat/`, `src/game/player/`, `src/game/weapon/`)
 
-- [ ] Verify the bot uses the selected map's patrol, navigation, and cover points.
-- [ ] Verify line-of-sight, pursuit, search, tactical movement, and stuck recovery on both maps.
-- [ ] Verify player and bot safe-respawn selection on both maps.
-- [ ] Verify health/ammunition/armor pickups have valid, reachable placements on both maps.
-- [ ] Verify all three weapons work against map geometry, cover, impacts, and collision on both maps.
-- [ ] Verify bot visibility, projectile/hitscan blocking, and decals/effects do not appear through cover.
+- [x] Verify the bot uses the selected map's patrol, navigation, and cover points.
+- [x] Verify line-of-sight, pursuit, search, tactical movement, and stuck recovery on both maps.
+- [x] Verify player and bot safe-respawn selection on both maps.
+- [x] Verify health/ammunition/armor pickups have valid, reachable placements on both maps.
+- [x] Verify all three weapons work against map geometry, cover, impacts, and collision on both maps.
+- [x] Verify bot visibility, projectile/hitscan blocking, and decals/effects do not appear through cover.
 
 ### 8. UI, loading, and accessibility (`index.html`, `src/main.ts`, `src/styles.css`)
 

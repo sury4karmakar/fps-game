@@ -36,6 +36,12 @@ export interface ArenaBuildResult {
   };
 }
 
+/** Identifies geometry supplied by the active arena as a gameplay blocker. */
+export function isArenaCollisionMesh(mesh: { metadata: unknown }): boolean {
+  const metadata = mesh.metadata as { arenaCollision?: boolean } | null;
+  return metadata?.arenaCollision === true;
+}
+
 function assertFinitePoint(mapName: string, label: string, point: Vector3): void {
   if (
     !Number.isFinite(point.x) ||
@@ -60,6 +66,7 @@ export function validateArenaBuildResult(
   }
 
   if (
+    arena.collidableMeshes.length === 0 ||
     arena.respawnPoints.player.length < 2 ||
     arena.respawnPoints.bot.length < 2 ||
     arena.botPatrolPoints.length === 0 ||
@@ -69,6 +76,14 @@ export function validateArenaBuildResult(
     throw new Error(
       `${GAME_NAME} map "${mapName}" requires player and bot respawns, patrol, navigation, and cover data.`,
     );
+  }
+
+  for (const mesh of arena.collidableMeshes) {
+    if (!isArenaCollisionMesh(mesh) || !mesh.isPickable || !mesh.checkCollisions) {
+      throw new Error(
+        `${GAME_NAME} map "${mapName}" has invalid collision geometry: ${mesh.name}.`,
+      );
+    }
   }
 
   const spawnIds = new Set<string>();

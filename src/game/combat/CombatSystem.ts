@@ -13,7 +13,10 @@ import "@babylonjs/core/Rendering/outlineRenderer.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import "@babylonjs/core/Shaders/outline.fragment.js";
 import "@babylonjs/core/Shaders/outline.vertex.js";
-import type { ArenaSpawnPoint } from "../arena/arenaTypes";
+import {
+  isArenaCollisionMesh,
+  type ArenaSpawnPoint,
+} from "../arena/arenaTypes";
 import type { AudioSystem } from "../audio/AudioSystem";
 import { GAME_NAME } from "../config/gameConfig";
 import type { PlayerController } from "../player/PlayerController";
@@ -107,6 +110,7 @@ export class CombatSystem {
   private readonly updateObserver: Observer<Scene>;
   private readonly supplyMaterial: StandardMaterial;
   private readonly armorMaterial: StandardMaterial;
+  private readonly arenaCollisionMeshes: ReadonlySet<AbstractMesh>;
   private readonly supplyPickups: SupplyPickup[] = [];
   private armorPickup: ArmorPickup | null = null;
 
@@ -131,11 +135,13 @@ export class CombatSystem {
       readonly player: readonly ArenaSpawnPoint[];
       readonly bot: readonly ArenaSpawnPoint[];
     },
+    collidableMeshes: readonly AbstractMesh[],
     private readonly hud: CombatHudElements,
     private readonly reportKill: (killer: KillOwner) => void,
     private readonly addPlayerAmmo: (amount: number) => number,
     private readonly audioSystem: AudioSystem,
   ) {
+    this.arenaCollisionMeshes = new Set(collidableMeshes);
     const now = performance.now();
 
     this.playerState = this.createInitialState(now);
@@ -741,10 +747,7 @@ export class CombatSystem {
         );
         const coverHit = this.scene.pickWithRay(
           sightRay,
-          (mesh) => {
-            const metadata = mesh.metadata as { arenaCollision?: boolean } | null;
-            return metadata?.arenaCollision === true;
-          },
+          this.isArenaCollision,
           false,
         );
         hasCover = coverHit?.hit === true;
@@ -764,6 +767,9 @@ export class CombatSystem {
   private isSpawnProtected(state: CombatantState, now: number): boolean {
     return now < state.spawnProtectedUntil;
   }
+
+  private readonly isArenaCollision = (mesh: AbstractMesh): boolean =>
+    this.arenaCollisionMeshes.has(mesh) && isArenaCollisionMesh(mesh);
 
   private updateHud(now: number): void {
     this.updateHealthHud();

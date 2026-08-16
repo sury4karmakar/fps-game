@@ -78,6 +78,7 @@ export async function createScene(
       scene,
       playerController,
       arena.respawnPoints,
+      arena.collidableMeshes,
       combatHud,
       (killer) => matchManager?.recordKill(killer),
       (amount) => weaponSystem?.addAmmo(amount) ?? 0,
@@ -90,6 +91,7 @@ export async function createScene(
       arena.botPatrolPoints,
       arena.botNavigationPoints,
       arena.botCoverPoints,
+      arena.collidableMeshes,
       matchConfiguration.botDifficultyId,
     );
     const initializedPlayerController = playerController;
@@ -99,6 +101,7 @@ export async function createScene(
       scene,
       canvas,
       initializedPlayerController.camera,
+      arena.collidableMeshes,
       weaponHud,
       (mesh, damage) => initializedCombatSystem.applyWeaponHit(mesh, damage),
       () => initializedBotAI.notifyPlayerShot(initializedPlayerController.camera.position),

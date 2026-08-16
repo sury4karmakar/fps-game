@@ -1,8 +1,12 @@
 import { Ray } from "@babylonjs/core/Culling/ray.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
-import type { ArenaCoverPoint } from "../arena/arenaTypes";
+import {
+  isArenaCollisionMesh,
+  type ArenaCoverPoint,
+} from "../arena/arenaTypes";
 import type { CombatSystem } from "../combat/CombatSystem";
 import {
   DEFAULT_BOT_DIFFICULTY_ID,
@@ -78,6 +82,7 @@ export class BotAI {
   private readonly updateObserver: Observer<Scene>;
   private readonly lastKnownPlayerPosition = Vector3.Zero();
   private readonly navigationGraph: readonly NavigationEdge[][];
+  private readonly arenaCollisionMeshes: ReadonlySet<AbstractMesh>;
   private readonly patrolScanTarget = Vector3.Zero();
   private readonly searchLookTarget = Vector3.Zero();
 
@@ -118,12 +123,14 @@ export class BotAI {
     private readonly patrolPoints: readonly Vector3[],
     private readonly navigationPoints: readonly Vector3[],
     private readonly coverPoints: readonly ArenaCoverPoint[],
+    collidableMeshes: readonly AbstractMesh[],
     difficultyId: BotDifficultyId = DEFAULT_BOT_DIFFICULTY_ID,
   ) {
     if (
       patrolPoints.length === 0 ||
       navigationPoints.length === 0 ||
       coverPoints.length === 0
+      || collidableMeshes.length === 0
     ) {
       throw new Error(
         `${GAME_NAME} requires bot patrol, navigation, and cover points.`,
@@ -131,6 +138,7 @@ export class BotAI {
     }
 
     this.difficulty = getBotDifficultyDefinition(difficultyId);
+    this.arenaCollisionMeshes = new Set(collidableMeshes);
     this.navigationGraph = this.buildNavigationGraph();
     this.chooseNextPatrolTarget(performance.now());
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
@@ -1042,12 +1050,8 @@ export class BotAI {
     return minimumClearance;
   }
 
-  private readonly isArenaCollision = (mesh: {
-    metadata: unknown;
-  }): boolean => {
-    const metadata = mesh.metadata as { arenaCollision?: boolean } | null;
-    return metadata?.arenaCollision === true;
-  };
+  private readonly isArenaCollision = (mesh: AbstractMesh): boolean =>
+    this.arenaCollisionMeshes.has(mesh) && isArenaCollisionMesh(mesh);
 
   private chooseNextPatrolTarget(now: number): void {
     const botPosition = this.combatSystem.getBotPosition();
