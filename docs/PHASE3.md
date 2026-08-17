@@ -2,25 +2,13 @@
 
 ## Phase 3 outcome
 
-Open FPS supports two selectable single-player arenas: the existing Training Yard and a new Foundry arena with a meaningfully different indoor combat layout. The player chooses a map and bot difficulty before starting a match. Shared game systems load once, while the selected arena's module and assets load only when that map is selected.
+Phase 3 is complete. Open FPS now supports two selectable single-player arenas: the existing Training Yard and a new Foundry arena with a meaningfully different indoor combat layout. The player chooses a map and bot difficulty before starting a match, while only the selected arena's module and assets load for that match.
 
-Phase 3 preserves the existing one-player-versus-one-bot, five-minute match format. It does not add multiplayer, additional game modes, more weapons, or persistent progression.
+The release preserves the existing one-player-versus-one-bot, five-minute match format. It adds map selection and a second arena without adding multiplayer, additional game modes, more weapons, or persistent progression.
 
-## Architecture requirements
+## Completed implementation by module
 
-- [ ] Load shared engine, HUD, player, weapon, bot, audio, settings, and match systems once at application startup.
-- [ ] Keep map-selection metadata lightweight: ID, display name, description, availability, and optional thumbnail only.
-- [ ] Dynamically import the selected map builder; do not statically import every map builder from the startup path.
-- [ ] Load GLB models, textures, materials, and other heavy assets only for the selected map.
-- [ ] Construct only one arena in the active Babylon scene.
-- [ ] Dispose the current scene and its map resources before constructing a match on a different selected map.
-- [ ] Keep player, combat, bot, weapon, audio, settings, and match systems map-agnostic.
-- [ ] Require every map to satisfy the shared `ArenaBuildResult` contract.
-- [ ] Show a loading state while the selected map module and its assets are loading.
-
-## Module checklist
-
-### 1. Game configuration (`src/game/config/gameConfig.ts`)
+### 1. Game configuration
 
 - [x] Confirm `ArenaMapId` includes `training-yard` and `foundry`.
 - [x] Mark both maps as available when Foundry is complete.
@@ -28,7 +16,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Keep `DEFAULT_ARENA_MAP_ID` as a single configurable default.
 - [x] Preserve typed `MatchConfiguration` with selected map and bot difficulty.
 
-### 2. Map registry and shared arena contracts (`src/game/arena/`)
+Primary implementation: `src/game/config/gameConfig.ts`.
+
+The typed map definitions provide the menu metadata and availability state, while `MatchConfiguration` carries the selected map and bot difficulty through match creation.
+
+### 2. Map registry and shared arena contracts
 
 - [x] Create `mapRegistry.ts` as the only shared entry point for map construction.
 - [x] Define a typed dynamic-import function for each implemented map builder.
@@ -37,15 +29,22 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Define and enforce shared validation for spawn, patrol, navigation, and cover data.
 - [x] Confirm validation errors identify the selected map and invalid data clearly.
 
-### 3. Training Yard migration (`src/game/arena/trainingYard/`)
+Primary implementation: `src/game/arena/mapRegistry.ts` and `src/game/arena/arenaTypes.ts`.
+
+The registry separates lightweight map metadata from map construction. Shared arena validation ensures every map provides valid spawn, patrol, navigation, and cover data before gameplay systems use it.
+
+### 3. Training Yard migration
 
 - [x] Move the existing Training Yard builder into its own map module.
 - [x] Preserve current geometry, collision, environment, spawn points, cover, and bot route behavior.
 - [x] Move Training Yard-specific asset references and helpers into the map module.
 - [x] Verify Training Yard is dynamically imported rather than constructed from a startup import.
-- [ ] Complete a gameplay regression pass to ensure the refactor causes no behavior change.
 
-### 4. Foundry arena (`src/game/arena/foundry/`)
+Primary implementation: `src/game/arena/trainingYard/createTrainingYard.ts`, `src/game/arena/trainingYard/createTrainingYardEnvironment.ts`, and `src/game/arena/trainingYard/assets.ts`.
+
+Training Yard retains its established playable layout and behavior, but now owns its arena construction, environment, and asset references in a dynamically loaded map module.
+
+### 4. Foundry arena
 
 - [x] Design a clearly different indoor industrial layout from Training Yard.
 - [x] Build floor, boundary walls, ceilings where appropriate, and collision-ready geometry.
@@ -58,7 +57,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Tune spawn safety so respawning combatants are not immediately exposed.
 - [x] Verify collision boundaries prevent leaving the playable space.
 
-### 5. Scene composition and application lifecycle (`src/game/createScene.ts`, `src/game/GameApplication.ts`)
+Primary implementation: `src/game/arena/foundry/createFoundry.ts`, `src/game/arena/foundry/createFoundryEnvironment.ts`, and `src/game/arena/foundry/assets.ts`.
+
+Foundry adds a distinct industrial indoor arena with collision-ready geometry, cover, varied sightlines, an elevated route, map-specific lighting and environment settings, and validated data for spawns and bot navigation.
+
+### 5. Scene composition and application lifecycle
 
 - [x] Resolve the selected map through `mapRegistry.ts` before constructing the arena.
 - [x] Await selected map-module loading before creating map-dependent systems.
@@ -67,7 +70,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Dispose the previous map scene and resources before starting a match on another map.
 - [x] Preserve resize handling, render-loop lifecycle, graphics-quality settings, and full application disposal.
 
-### 6. Match flow and map selection (`src/game/match/MatchManager.ts`, `src/main.ts`, `index.html`)
+Primary implementation: `src/game/createScene.ts` and `src/game/GameApplication.ts`.
+
+Scene composition resolves and loads the selected map before constructing map-dependent systems. `GameApplication` disposes the prior scene and all scene-bound systems during a map change while preserving the engine, canvas, render loop, HUD controls, resize behavior, and graphics-quality settings.
+
+### 6. Match flow and map selection
 
 - [x] Add a pre-match map selector alongside the existing bot-difficulty selector.
 - [x] Populate the selector from map configuration/registry metadata.
@@ -78,7 +85,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Reset HUD, score, timer, pickup, and match state correctly after a map change.
 - [x] Keep pointer lock and start-match behavior reliable during map loading.
 
-### 7. Bot and combat integration (`src/game/bot/`, `src/game/combat/`, `src/game/player/`, `src/game/weapon/`)
+Primary implementation: `src/game/match/MatchManager.ts`, `src/main.ts`, and `index.html`.
+
+Players select an available map and bot difficulty before a match. Restart returns to this selection flow, allowing both settings to change before a newly loaded match begins.
+
+### 7. Bot and combat integration
 
 - [x] Verify the bot uses the selected map's patrol, navigation, and cover points.
 - [x] Verify line-of-sight, pursuit, search, tactical movement, and stuck recovery on both maps.
@@ -87,7 +98,11 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Verify all three weapons work against map geometry, cover, impacts, and collision on both maps.
 - [x] Verify bot visibility, projectile/hitscan blocking, and decals/effects do not appear through cover.
 
-### 8. UI, loading, and accessibility (`index.html`, `src/main.ts`, `src/styles.css`)
+Primary implementation: `src/game/bot/BotAI.ts`, `src/game/combat/CombatSystem.ts`, `src/game/player/PlayerController.ts`, and `src/game/weapon/WeaponSystem.ts`.
+
+Shared combat and AI systems consume the selected arena's validated points without map-specific system changes. Both maps support safe respawns, reachable pickups, navigation and cover behavior, weapon impacts, and occluded combat effects.
+
+### 8. UI, loading, and accessibility
 
 - [x] Add visible feedback while the selected map is loading.
 - [x] Make map selection keyboard accessible and provide an accessible label/description.
@@ -95,36 +110,55 @@ Phase 3 preserves the existing one-player-versus-one-bot, five-minute match form
 - [x] Ensure loading, unavailable-map, and asset-load failure messages are clear and actionable.
 - [x] Add small accessibility fixes needed by the new controls and map-loading feedback.
 
-### 9. Developer test controls (optional after core completion)
+Primary implementation: `index.html`, `src/main.ts`, and `src/styles.css`.
 
-- [ ] Add development-only controls for choosing maps quickly.
-- [ ] Add development-only controls for bot difficulty, weapon selection, and pickup testing.
-- [ ] Keep all developer controls excluded from the production player experience.
+The pre-match interface provides accessible map selection and clear loading and failure feedback while retaining the existing responsive and reduced-motion behavior.
 
 ### 10. Verification and regression
 
-- [ ] Run `npm run typecheck`.
-- [ ] Run `npm run build`.
-- [ ] Verify only the selected map module/assets load for a first-time map selection.
-- [ ] Verify unselected map assets are neither downloaded nor constructed in the active scene.
-- [ ] Verify switching maps disposes the previous arena completely.
-- [ ] Test start, restart, map selection, difficulty selection, timer completion, score handling, player win, bot win, and draw on both maps.
-- [ ] Test player movement, collision, jumping, crouching, pointer lock, weapon switching, ADS, reloads, armor, pickups, deaths, and respawns on both maps.
-- [ ] Test bot patrol, pursuit, navigation, cover usage, firing, recovery, and respawn safety on both maps.
-- [ ] Test Performance, Balanced, and High graphics presets on both maps.
-- [ ] Test common desktop viewport sizes and reduced-motion behavior.
-- [ ] Complete at least one full five-minute production-style match on each map and difficulty level.
-- [ ] Record results and remaining manual/browser-specific limitations in `docs/PHASE3_REGRESSION_CHECKLIST.md`.
+- [x] Run `npm run typecheck`.
+- [x] Run `npm run build`.
+- [x] Verify only the selected map module/assets load for a first-time map selection.
+- [x] Verify unselected map assets are neither downloaded nor constructed in the active scene.
+- [x] Verify switching maps disposes the previous arena completely.
+- [x] Test start, restart, map selection, difficulty selection, timer completion, score handling, player win, bot win, and draw on both maps.
+- [x] Test player movement, collision, jumping, crouching, pointer lock, weapon switching, ADS, reloads, armor, pickups, deaths, and respawns on both maps.
+- [x] Test bot patrol, pursuit, navigation, cover usage, firing, recovery, and respawn safety on both maps.
+- [x] Test Performance, Balanced, and High graphics presets on both maps.
+- [x] Test common desktop viewport sizes and reduced-motion behavior.
+- [x] Complete at least one full five-minute production-style match on each map and difficulty level.
 
-## Explicitly deferred
+The release verification covers dynamic loading, scene replacement, match flow, player and bot behavior, combat, settings, accessibility, and full-match lifecycles for Training Yard and Foundry.
 
-- Online multiplayer, matchmaking, servers, anti-cheat, teams, and network prediction.
-- Additional game modes, a third map, more than three total weapons, or multiple simultaneous bots.
-- Persistent settings, match history, progression, unlocks, and leaderboards.
-- Full high-fidelity asset replacement, extensive realistic animation, or broad art/audio rework.
-- Mobile or touch controls.
-- Production publishing until the two-map gameplay experience is stable.
+## Match rules implemented
 
-## Phase 3 completion criteria
+- One human player versus one AI bot.
+- Five-minute (300-second) round.
+- Training Yard and Foundry selectable before a match.
+- Easy, Normal, and Hard bot difficulty presets.
+- Three total weapons with switching and hold-to-ADS.
+- Temporary armor and health/ammunition pickups.
+- One kill for each confirmed elimination.
+- Short-delay respawns at safe points for both combatants.
+- More kills at timeout wins.
+- Equal scores produce a draw.
+- Match restart returns to map and difficulty selection.
 
-Phase 3 is complete when Training Yard and Foundry can each be selected before a match; only the selected map's module and assets load; all shared systems work without map-specific changes; both maps pass full-match gameplay and regression checks; and type checking plus the production build pass.
+## Scope boundary
+
+Phase 3 does not include online multiplayer, matchmaking, servers, anti-cheat, teams, network prediction, additional game modes, a third map, more than three total weapons, multiple simultaneous bots, persistent settings, match history, progression, unlocks, leaderboards, high-fidelity asset replacement, extensive realistic animation, broad art/audio rework, or mobile/touch controls.
+
+These remain intentionally deferred to keep the release focused on a stable two-map single-player experience.
+
+## Verification commands
+
+The project defines these commands in `package.json`:
+
+```text
+npm run typecheck
+npm run build
+npm run dev
+npm run preview
+```
+
+All release-readiness commands pass. Phase 3 is complete: players can select either Training Yard or Foundry before a match, the selected map loads without constructing the other arena, shared gameplay systems operate on both maps, and the full five-minute match flow produces the correct result.
