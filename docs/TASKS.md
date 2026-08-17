@@ -1,17 +1,6 @@
 # Open FPS — Task Backlog
 
-## Phase 3: Second Arena and Map Selection
-
-This feature requires a separate scope decision before implementation.
-
-- [ ] Design and build one new indoor arena with a meaningfully different layout from the Training Yard.
-- [ ] Add floor, walls, cover, platforms or ramps, lighting, collision meshes, and environment setup.
-- [ ] Add player and bot spawn points with safe-spawn validation.
-- [ ] Add bot patrol and navigation waypoints specific to the new arena.
-- [ ] Add map selection before a match begins.
-- [ ] Verify visibility, collision, spawn safety, performance, and full-match play on both arenas.
-
-## Phase 3: Game Polish and Distribution
+## Future Game Polish and Distribution
 
 - [ ] Add higher-quality models, textures, lighting, audio, and visual effects.
 - [ ] Add pause, accessibility, and onboarding improvements.
