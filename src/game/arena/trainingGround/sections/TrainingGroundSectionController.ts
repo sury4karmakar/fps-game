@@ -1,4 +1,7 @@
 import type { Scene } from "@babylonjs/core/scene.js";
+import type { ArenaSpawnPoint } from "../../arenaTypes";
+import type { PlayerControlPort } from "../../../core/contracts";
+import type { TrainingGroundInteractionController } from "../interactions/TrainingGroundInteractionController";
 import {
   getTrainingGroundSectionDefinition,
 } from "./trainingGroundSectionRegistry";
@@ -13,7 +16,14 @@ export class TrainingGroundSectionController {
   private requestGeneration = 0;
   private disposed = false;
 
-  public constructor(private readonly scene: Scene) {}
+  public constructor(
+    private readonly scene: Scene,
+    private readonly player: PlayerControlPort,
+    private readonly hubSpawn: ArenaSpawnPoint,
+    private readonly interactions: TrainingGroundInteractionController,
+    private readonly registerCollisionMeshes: (meshes: readonly import("@babylonjs/core/Meshes/abstractMesh.js").AbstractMesh[]) => import("../../../core/contracts").Disposable,
+    private readonly onHubReturned?: () => void,
+  ) {}
 
   public get activeSectionId(): TrainingGroundSectionId | null {
     return this.activeSection?.id ?? null;
@@ -46,7 +56,13 @@ export class TrainingGroundSectionController {
       return;
     }
 
-    const section = module.createTrainingGroundSection({ scene: this.scene });
+    const section = module.createTrainingGroundSection({
+      scene: this.scene,
+      player: this.player,
+      interactions: this.interactions,
+      registerCollisionMeshes: this.registerCollisionMeshes,
+      returnToHub: () => this.returnToHub(),
+    });
     if (section.id !== sectionId) {
       section.dispose();
       throw new Error(`${definition.label} returned an unexpected section id.`);
@@ -58,6 +74,8 @@ export class TrainingGroundSectionController {
   public returnToHub(): void {
     this.requestGeneration += 1;
     this.disposeActiveSection();
+    this.player.respawn(this.hubSpawn);
+    this.onHubReturned?.();
   }
 
   public dispose(): void {

@@ -1,11 +1,17 @@
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Scene } from "@babylonjs/core/scene.js";
-import type { Disposable } from "../../../core/contracts";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
+import type { Disposable, PlayerControlPort } from "../../../core/contracts";
+import type { TrainingGroundInteractionController } from "../interactions/TrainingGroundInteractionController";
 
 export type TrainingGroundSectionId = "shooting-range" | "movement-training";
 
 export interface TrainingGroundSectionContext {
   readonly scene: Scene;
+  readonly player: PlayerControlPort;
+  readonly interactions: TrainingGroundInteractionController;
+  registerCollisionMeshes(meshes: readonly AbstractMesh[]): Disposable;
+  returnToHub(): void;
 }
 
 /**
