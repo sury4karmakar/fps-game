@@ -73,6 +73,10 @@ const matchHud: MatchHudElements = {
   // mapStatus: requireElement<HTMLElement>("#match-map-status"),
   loadingStatus: requireElement<HTMLElement>("#match-loading-status"),
   exitMapButton: requireElement<HTMLButtonElement>("#exit-map-button"),
+  trainingNavigation: requireElement<HTMLElement>("#training-navigation"),
+  shootingRangeButton: requireElement<HTMLButtonElement>("#shooting-range-button"),
+  movementTrainingButton: requireElement<HTMLButtonElement>("#movement-training-button"),
+  trainingNavigationStatus: requireElement<HTMLElement>("#training-navigation-status"),
   scorePanel: requireElement<HTMLElement>("#score-panel"),
   botHealthCard: requireElement<HTMLElement>(".bot-health-card"),
 };

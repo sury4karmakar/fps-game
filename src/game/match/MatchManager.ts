@@ -27,6 +27,12 @@ export type MatchStartRequestHandler = (
   configuration: MatchConfiguration,
 ) => Promise<void> | void;
 
+export type TrainingSectionId = "shooting-range" | "movement-training";
+
+export type TrainingSectionRequestHandler = (
+  sectionId: TrainingSectionId,
+) => Promise<void> | void;
+
 export interface MatchHudElements {
   readonly state: HTMLElement;
   readonly timer: HTMLElement;
@@ -50,6 +56,10 @@ export interface MatchHudElements {
   readonly mapStatus?: HTMLElement;
   readonly loadingStatus: HTMLElement;
   readonly exitMapButton: HTMLButtonElement;
+  readonly trainingNavigation: HTMLElement;
+  readonly shootingRangeButton: HTMLButtonElement;
+  readonly movementTrainingButton: HTMLButtonElement;
+  readonly trainingNavigationStatus: HTMLElement;
   readonly scorePanel: HTMLElement;
   readonly botHealthCard: HTMLElement;
 }
@@ -66,6 +76,7 @@ export class MatchManager {
   private selectedDifficultyId: BotDifficultyId;
   private selectedMapId: ArenaMapId;
   private isLoadingMap = false;
+  private isLoadingTrainingSection = false;
   private isDisposed = false;
 
   public constructor(
@@ -84,6 +95,7 @@ export class MatchManager {
     private readonly onMatchStartRequested?: MatchStartRequestHandler,
     private readonly botEnabled = true,
     private readonly hasMatchTimer = true,
+    private readonly onTrainingSectionRequested?: TrainingSectionRequestHandler,
   ) {
     if (!Number.isFinite(matchDurationMs) || matchDurationMs <= 0) {
       throw new Error("Match duration must be a positive number.");
@@ -100,6 +112,8 @@ export class MatchManager {
     );
     this.hud.mapSelect?.addEventListener("change", this.handleMapChange);
     this.hud.exitMapButton.addEventListener("click", this.handleExitMap);
+    this.hud.shootingRangeButton.addEventListener("click", this.handleShootingRange);
+    this.hud.movementTrainingButton.addEventListener("click", this.handleMovementTraining);
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
       this.update();
     });
@@ -116,6 +130,8 @@ export class MatchManager {
     );
     this.hud.mapSelect?.removeEventListener("change", this.handleMapChange);
     this.hud.exitMapButton.removeEventListener("click", this.handleExitMap);
+    this.hud.shootingRangeButton.removeEventListener("click", this.handleShootingRange);
+    this.hud.movementTrainingButton.removeEventListener("click", this.handleMovementTraining);
   }
 
   public recordKill(killer: KillOwner): void {
@@ -165,6 +181,9 @@ export class MatchManager {
     if (this.hud.mapSelect) this.hud.mapSelect.disabled = true;
     this.hud.loadingStatus.hidden = true;
     this.hud.exitMapButton.hidden = this.hasMatchTimer;
+    this.hud.exitMapButton.textContent = this.hasMatchTimer ? "Exit Map" : "Exit Training Ground";
+    this.hud.trainingNavigation.hidden = this.hasMatchTimer;
+    this.setTrainingNavigationState("ready");
   }
 
   private readonly handleAction = (): void => {
@@ -182,6 +201,14 @@ export class MatchManager {
     if (this.matchState === "playing") {
       this.enterWaitingState();
     }
+  };
+
+  private readonly handleShootingRange = (): void => {
+    void this.requestTrainingSection("shooting-range");
+  };
+
+  private readonly handleMovementTraining = (): void => {
+    void this.requestTrainingSection("movement-training");
   };
 
   private readonly handleDifficultyChange = (): void => {
@@ -236,6 +263,8 @@ export class MatchManager {
     this.hud.overlay.setAttribute("aria-busy", "false");
     this.hud.timer.hidden = !this.hasMatchTimer;
     this.hud.exitMapButton.hidden = true;
+    this.hud.exitMapButton.textContent = this.hasMatchTimer ? "Exit Map" : "Exit Training Ground";
+    this.hud.trainingNavigation.hidden = true;
     this.hud.scorePanel.hidden = !this.botEnabled;
     this.hud.botHealthCard.hidden = !this.botEnabled;
     this.hud.eyebrow.textContent = this.hasMatchTimer
@@ -254,6 +283,7 @@ export class MatchManager {
     if (this.hud.mapSelect) this.hud.mapSelect.disabled = false;
     this.hud.loadingStatus.hidden = true;
     this.isLoadingMap = false;
+    this.isLoadingTrainingSection = false;
     delete this.hud.overlay.dataset.result;
     this.updateSelectionHud();
   }
@@ -422,6 +452,64 @@ export class MatchManager {
         ? error.message
         : "The selected map could not be loaded. Please try again.";
     }
+  }
+
+  private async requestTrainingSection(sectionId: TrainingSectionId): Promise<void> {
+    if (
+      this.hasMatchTimer ||
+      this.matchState !== "playing" ||
+      this.isLoadingTrainingSection
+    ) {
+      return;
+    }
+
+    this.isLoadingTrainingSection = true;
+    this.setTrainingNavigationState("loading", sectionId);
+
+    try {
+      if (!this.onTrainingSectionRequested) {
+        throw new Error(
+          "This training module is not available in the current build.",
+        );
+      }
+
+      await this.onTrainingSectionRequested(sectionId);
+      if (!this.isDisposed) {
+        this.setTrainingNavigationState("ready", sectionId);
+      }
+    } catch (error) {
+      if (!this.isDisposed) {
+        this.setTrainingNavigationState(
+          "error",
+          error instanceof Error ? error.message : "Unable to load this training module.",
+        );
+      }
+    } finally {
+      this.isLoadingTrainingSection = false;
+    }
+  }
+
+  private setTrainingNavigationState(
+    state: "ready" | "loading" | "error",
+    detail?: TrainingSectionId | string,
+  ): void {
+    const isLoading = state === "loading";
+    this.hud.shootingRangeButton.disabled = isLoading;
+    this.hud.movementTrainingButton.disabled = isLoading;
+    this.hud.trainingNavigationStatus.dataset.state = state;
+
+    if (state === "ready") {
+      this.hud.trainingNavigationStatus.textContent = "Choose a training section.";
+      return;
+    }
+
+    if (state === "loading") {
+      const label = detail === "movement-training" ? "Movement Training" : "Shooting Range";
+      this.hud.trainingNavigationStatus.textContent = `Loading ${label}…`;
+      return;
+    }
+
+    this.hud.trainingNavigationStatus.textContent = detail ?? "Unable to load this training module.";
   }
 
   private updateSelectionHud(): void {

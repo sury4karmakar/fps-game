@@ -10,8 +10,8 @@ import { validateArenaBuildResult } from "../arenaTypes";
 import type { ArenaBuildResult, ArenaCoverPoint, ArenaSpawnPoint } from "../arenaTypes";
 import { createTrainingGroundEnvironment } from "./createTrainingGroundEnvironment";
 
-const WIDTH = 48;
-const DEPTH = 40;
+const WIDTH = 32;
+const DEPTH = 28;
 const WALL_HEIGHT = 5;
 const WALL_THICKNESS = 0.8;
 
@@ -35,7 +35,22 @@ function createCollidableBox(
   return mesh;
 }
 
-/** Builds an intentionally empty, player-only outdoor testing space. */
+function createShowcasePlinth(
+  scene: Scene,
+  name: string,
+  position: Vector3,
+  material: StandardMaterial,
+): Mesh {
+  const plinth = CreateBox(name, { width: 3.8, height: 1.4, depth: 1.8 }, scene);
+  plinth.position.copyFrom(position);
+  plinth.material = material;
+  plinth.isPickable = false;
+  plinth.checkCollisions = false;
+  plinth.receiveShadows = true;
+  return plinth;
+}
+
+/** Builds the lightweight Entry and Showcase hub for Training Ground. */
 export function createTrainingGround(scene: Scene): ArenaBuildResult {
   scene.collisionsEnabled = true;
   const { shadowGenerator } = createTrainingGroundEnvironment(scene);
@@ -46,6 +61,9 @@ export function createTrainingGround(scene: Scene): ArenaBuildResult {
   const wallMaterial = new StandardMaterial("training-ground-wall-material", scene);
   wallMaterial.diffuseColor = new Color3(0.82, 0.84, 0.8);
   wallMaterial.specularColor = Color3.Black();
+  const showcaseMaterial = new StandardMaterial("training-ground-showcase-material", scene);
+  showcaseMaterial.diffuseColor = new Color3(0.17, 0.46, 0.68);
+  showcaseMaterial.specularColor = new Color3(0.12, 0.22, 0.3);
 
   const floor = createCollidableBox(
     scene, collidableMeshes, "training-ground-floor",
@@ -66,10 +84,20 @@ export function createTrainingGround(scene: Scene): ArenaBuildResult {
     shadowGenerator.addShadowCaster(wall);
   }
 
+  for (const [index, x] of [-5, 0, 5].entries()) {
+    const plinth = createShowcasePlinth(
+      scene,
+      `training-ground-showcase-plinth-${index + 1}`,
+      new Vector3(x, 0.7, 2.5),
+      showcaseMaterial,
+    );
+    shadowGenerator.addShadowCaster(plinth);
+  }
+
   const playerSpawn: ArenaSpawnPoint = {
-    id: "training-ground-player",
-    position: new Vector3(0, 0, 0),
-    facingTarget: new Vector3(0, 1.4, 10),
+    id: "training-ground-entry-player",
+    position: new Vector3(0, 0, -9),
+    facingTarget: new Vector3(0, 1.4, 2.5),
   };
   // These contract points are intentionally invisible. Training Ground does not enable a bot.
   const botSpawn: ArenaSpawnPoint = {
@@ -77,8 +105,8 @@ export function createTrainingGround(scene: Scene): ArenaBuildResult {
     position: new Vector3(0, 0, 10),
     facingTarget: new Vector3(0, 1.4, 0),
   };
-  const playerRespawns = [playerSpawn, { id: "training-ground-player-west", position: new Vector3(-14, 0, 0), facingTarget: new Vector3(0, 1.4, 0) }] as const;
-  const botRespawns = [botSpawn, { id: "training-ground-bot-placeholder-east", position: new Vector3(14, 0, 0), facingTarget: new Vector3(0, 1.4, 0) }] as const;
+  const playerRespawns = [playerSpawn, { id: "training-ground-entry-player-west", position: new Vector3(-8, 0, -9), facingTarget: new Vector3(0, 1.4, 2.5) }] as const;
+  const botRespawns = [botSpawn, { id: "training-ground-bot-placeholder-east", position: new Vector3(8, 0, 8), facingTarget: new Vector3(0, 1.4, 0) }] as const;
   const botPatrolPoints = [botSpawn.position] as const;
   const botNavigationPoints = [botSpawn.position] as const;
   const botCoverPoints: readonly ArenaCoverPoint[] = [{
