@@ -136,7 +136,7 @@ export const BOT_DIFFICULTY_DEFINITIONS: Readonly<
   },
 };
 
-export type ArenaMapId = "training-yard" | "foundry" | "training-ground";
+export type ArenaMapId = "foundry" | "training-ground";
 
 export type ArenaMapAvailability = "available" | "planned";
 
@@ -158,15 +158,6 @@ export const DEFAULT_ARENA_MAP_ID: ArenaMapId = "foundry";
 export const ARENA_MAP_DEFINITIONS: Readonly<
   Record<ArenaMapId, ArenaMapDefinition>
 > = {
-  "training-yard": {
-    id: "training-yard",
-    displayName: "Training Yard",
-    description: "The original compact indoor arena.",
-    availability: "available",
-    hasBot: true,
-    hasArmorPickups: true,
-    hasMatchTimer: true,
-  },
   foundry: {
     id: "foundry",
     displayName: "Foundry",

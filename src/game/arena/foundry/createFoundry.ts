@@ -314,8 +314,6 @@ export async function createFoundry(scene: Scene): Promise<ArenaBuildResult> {
     });
   });
 
-  // The furnace core blocks the longest diagonal sightline and creates a ring
-  // with four decision points instead of Training Yard's open center.
   createFoundryBox(scene, shadowGenerator, collidableMeshes, {
     name: "foundry-furnace-core",
     size: { width: 8, height: 3.6, depth: 6 },

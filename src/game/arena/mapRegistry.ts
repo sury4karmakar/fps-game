@@ -29,10 +29,6 @@ export interface MapRegistryEntry {
  * so their code and assets are excluded from the application startup path.
  */
 export const MAP_REGISTRY: Readonly<Record<ArenaMapId, MapRegistryEntry>> = {
-  "training-yard": {
-    definition: getArenaMapDefinition("training-yard"),
-    load: () => import("./trainingYard/createTrainingYard"),
-  },
   foundry: {
     definition: getArenaMapDefinition("foundry"),
     load: () => import("./foundry/createFoundry"),
