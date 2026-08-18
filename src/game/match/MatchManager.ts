@@ -47,6 +47,9 @@ export interface MatchHudElements {
   readonly mapDescription: HTMLElement;
   readonly mapStatus: HTMLElement;
   readonly loadingStatus: HTMLElement;
+  readonly exitMapButton: HTMLButtonElement;
+  readonly scorePanel: HTMLElement;
+  readonly botHealthCard: HTMLElement;
 }
 
 export class MatchManager {
@@ -77,6 +80,8 @@ export class MatchManager {
       botDifficultyId: "normal",
     },
     private readonly onMatchStartRequested?: MatchStartRequestHandler,
+    private readonly botEnabled = true,
+    private readonly hasMatchTimer = true,
   ) {
     if (!Number.isFinite(matchDurationMs) || matchDurationMs <= 0) {
       throw new Error("Match duration must be a positive number.");
@@ -92,6 +97,7 @@ export class MatchManager {
       this.handleDifficultyChange,
     );
     this.hud.mapSelect.addEventListener("change", this.handleMapChange);
+    this.hud.exitMapButton.addEventListener("click", this.handleExitMap);
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
       this.update();
     });
@@ -107,6 +113,7 @@ export class MatchManager {
       this.handleDifficultyChange,
     );
     this.hud.mapSelect.removeEventListener("change", this.handleMapChange);
+    this.hud.exitMapButton.removeEventListener("click", this.handleExitMap);
   }
 
   public recordKill(killer: KillOwner): void {
@@ -137,7 +144,7 @@ export class MatchManager {
     this.playerKills = 0;
     this.botKills = 0;
     this.remainingMs = this.matchDurationMs;
-    this.matchEndsAt = now + this.matchDurationMs;
+    this.matchEndsAt = this.hasMatchTimer ? now + this.matchDurationMs : 0;
     this.displayedSecond = -1;
 
     this.combatSystem.resetForMatch(now);
@@ -145,7 +152,9 @@ export class MatchManager {
     this.audioSystem.playMatchStart();
     this.setGameplayEnabled(true);
     this.updateScoreHud();
-    this.updateTimerHud(true);
+    if (this.hasMatchTimer) {
+      this.updateTimerHud(true);
+    }
     this.hud.state.textContent = "LIVE";
     this.hud.state.dataset.state = "playing";
     this.hud.overlay.dataset.state = "playing";
@@ -153,6 +162,7 @@ export class MatchManager {
     this.hud.difficultySelect.disabled = true;
     this.hud.mapSelect.disabled = true;
     this.hud.loadingStatus.hidden = true;
+    this.hud.exitMapButton.hidden = this.hasMatchTimer;
   }
 
   private readonly handleAction = (): void => {
@@ -163,6 +173,12 @@ export class MatchManager {
 
     if (this.matchState === "waiting") {
       void this.requestMatchStart();
+    }
+  };
+
+  private readonly handleExitMap = (): void => {
+    if (this.matchState === "playing") {
+      this.enterWaitingState();
     }
   };
 
@@ -208,12 +224,21 @@ export class MatchManager {
     this.hud.state.dataset.state = "waiting";
     this.hud.overlay.dataset.state = "waiting";
     this.hud.overlay.setAttribute("aria-busy", "false");
-    this.hud.eyebrow.textContent = "Five-minute duel";
+    this.hud.timer.hidden = !this.hasMatchTimer;
+    this.hud.exitMapButton.hidden = true;
+    this.hud.scorePanel.hidden = !this.botEnabled;
+    this.hud.botHealthCard.hidden = !this.botEnabled;
+    this.hud.eyebrow.textContent = this.hasMatchTimer
+      ? "Five-minute duel"
+      : "Free practice";
     this.hud.title.textContent = "Ready for the match?";
-    this.hud.message.textContent =
-      "Score more eliminations than the bot before the clock reaches zero.";
+    this.hud.message.textContent = this.hasMatchTimer
+      ? "Score more eliminations than the bot before the clock reaches zero."
+      : "Explore and test your equipment with no opponent or countdown.";
     this.hud.finalScore.hidden = true;
-    this.hud.actionButton.textContent = "Start Match";
+    this.hud.actionButton.textContent = this.hasMatchTimer
+      ? "Start Match"
+      : "Enter Training Ground";
     this.hud.actionButton.disabled = false;
     this.hud.difficultySelect.disabled = false;
     this.hud.mapSelect.disabled = false;
@@ -224,7 +249,7 @@ export class MatchManager {
   }
 
   private update(): void {
-    if (this.matchState !== "playing") {
+    if (this.matchState !== "playing" || !this.hasMatchTimer) {
       return;
     }
 
@@ -264,7 +289,7 @@ export class MatchManager {
 
   private setGameplayEnabled(enabled: boolean): void {
     this.combatSystem.setCombatEnabled(enabled);
-    this.botAI.setEnabled(enabled);
+    this.botAI.setEnabled(enabled && this.botEnabled);
     this.weaponSystem.setEnabled(enabled);
     this.playerController.setEnabled(enabled);
   }

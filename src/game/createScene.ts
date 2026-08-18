@@ -83,6 +83,8 @@ export async function createScene(
       (killer) => matchManager?.recordKill(killer),
       (amount) => weaponSystem?.addAmmo(amount) ?? 0,
       audioSystem,
+      selectedMap.hasBot,
+      selectedMap.hasArmorPickups,
     );
     botAI = new BotAI(
       scene,
@@ -118,6 +120,8 @@ export async function createScene(
       matchDurationMs,
       matchConfiguration,
       onMatchStartRequested,
+      selectedMap.hasBot,
+      selectedMap.hasMatchTimer,
     );
 
     return {

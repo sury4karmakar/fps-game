@@ -140,6 +140,8 @@ export class CombatSystem {
     private readonly reportKill: (killer: KillOwner) => void,
     private readonly addPlayerAmmo: (amount: number) => number,
     private readonly audioSystem: AudioSystem,
+    private readonly botEnabled = true,
+    private readonly armorPickupsEnabled = true,
   ) {
     this.arenaCollisionMeshes = new Set(collidableMeshes);
     const now = performance.now();
@@ -147,9 +149,16 @@ export class CombatSystem {
     this.playerState = this.createInitialState(now);
     this.botState = this.createInitialState(now);
     this.bot = this.createBotModel(respawnPoints.bot[0]);
+    if (!this.botEnabled) {
+      this.bot.root.setEnabled(false);
+      this.bot.collisionBody.setEnabled(false);
+      this.botState.alive = false;
+    }
     this.supplyMaterial = this.createSupplyMaterial();
     this.armorMaterial = this.createArmorMaterial();
-    this.nextArmorSpawnAt = now + ARMOR_INITIAL_SPAWN_DELAY_MS;
+    this.nextArmorSpawnAt = armorPickupsEnabled
+      ? now + ARMOR_INITIAL_SPAWN_DELAY_MS
+      : Number.POSITIVE_INFINITY;
     this.updateHud(now);
 
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
@@ -175,6 +184,7 @@ export class CombatSystem {
     if (
       !this.combatEnabled ||
       metadata?.combatantId !== "bot" ||
+      !this.botEnabled ||
       !this.botState.alive
     ) {
       return { damageApplied: false, eliminated: false };
@@ -237,20 +247,26 @@ export class CombatSystem {
     const playerSpawn = this.respawnPoints.player[0];
     const botSpawn = this.respawnPoints.bot[0];
 
-    if (!playerSpawn || !botSpawn) {
+    if (!playerSpawn || (this.botEnabled && !botSpawn)) {
       throw new Error(`${GAME_NAME} requires player and bot match spawns.`);
     }
 
     this.resetState(this.playerState, now);
     this.resetState(this.botState, now);
     this.playerController.respawn(playerSpawn);
-    this.bot.root.position.copyFrom(botSpawn.position);
-    this.bot.collisionBody.position.copyFrom(
-      botSpawn.position.add(new Vector3(0, BOT_COLLIDER_HALF_HEIGHT, 0)),
-    );
-    this.faceBotToward(botSpawn.facingTarget);
-    this.bot.collisionBody.setEnabled(true);
-    this.bot.root.setEnabled(true);
+    if (this.botEnabled && botSpawn) {
+      this.bot.root.position.copyFrom(botSpawn.position);
+      this.bot.collisionBody.position.copyFrom(
+        botSpawn.position.add(new Vector3(0, BOT_COLLIDER_HALF_HEIGHT, 0)),
+      );
+      this.faceBotToward(botSpawn.facingTarget);
+      this.bot.collisionBody.setEnabled(true);
+      this.bot.root.setEnabled(true);
+    } else {
+      this.botState.alive = false;
+      this.bot.collisionBody.setEnabled(false);
+      this.bot.root.setEnabled(false);
+    }
     this.botDamageFlashUntil = 0;
     this.botMuzzleFlashUntil = 0;
     this.playerDamageFlashUntil = 0;
@@ -259,7 +275,9 @@ export class CombatSystem {
     this.armorExpiresAt = 0;
     this.armorFlashUntil = 0;
     this.armorEquipFeedbackUntil = 0;
-    this.nextArmorSpawnAt = now + ARMOR_INITIAL_SPAWN_DELAY_MS;
+    this.nextArmorSpawnAt = this.armorPickupsEnabled
+      ? now + ARMOR_INITIAL_SPAWN_DELAY_MS
+      : Number.POSITIVE_INFINITY;
     this.clearSupplyPickups();
     this.clearArmorPickup();
     this.bot.muzzleFlash.setEnabled(false);
@@ -289,7 +307,7 @@ export class CombatSystem {
   }
 
   public moveBot(displacement: Vector3): number {
-    if (!this.combatEnabled || !this.botState.alive) {
+    if (!this.combatEnabled || !this.botEnabled || !this.botState.alive) {
       return 0;
     }
 
@@ -316,7 +334,7 @@ export class CombatSystem {
   }
 
   public showBotMuzzleFlash(now: number): void {
-    if (!this.combatEnabled || !this.botState.alive) {
+    if (!this.combatEnabled || !this.botEnabled || !this.botState.alive) {
       return;
     }
 
@@ -346,11 +364,11 @@ export class CombatSystem {
       this.respawnPlayer(now);
     }
 
-    if (!this.botState.alive && now >= this.botState.respawnAt) {
+    if (this.botEnabled && !this.botState.alive && now >= this.botState.respawnAt) {
       this.respawnBot(now);
     }
 
-    const botIsProtected =
+    const botIsProtected = this.botEnabled &&
       this.botState.alive && this.isSpawnProtected(this.botState, now);
     this.updateBotProtectionVisual(botIsProtected, now);
 
@@ -386,8 +404,10 @@ export class CombatSystem {
     }
 
     this.updateSupplyPickups(now);
-    this.updateArmorPickup(now);
-    this.updateArmorState(now);
+    if (this.armorPickupsEnabled) {
+      this.updateArmorPickup(now);
+      this.updateArmorState(now);
+    }
   }
 
   private applyDamage(target: CombatantId, damage: number, now: number): boolean {

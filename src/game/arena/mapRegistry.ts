@@ -37,6 +37,10 @@ export const MAP_REGISTRY: Readonly<Record<ArenaMapId, MapRegistryEntry>> = {
     definition: getArenaMapDefinition("foundry"),
     load: () => import("./foundry/createFoundry"),
   },
+  "training-ground": {
+    definition: getArenaMapDefinition("training-ground"),
+    load: () => import("./trainingGround/createTrainingGround"),
+  },
 };
 
 export function getMapRegistryEntry(mapId: ArenaMapId): MapRegistryEntry {

@@ -70,6 +70,9 @@ const matchHud: MatchHudElements = {
   mapDescription: requireElement<HTMLElement>("#match-map-description"),
   mapStatus: requireElement<HTMLElement>("#match-map-status"),
   loadingStatus: requireElement<HTMLElement>("#match-loading-status"),
+  exitMapButton: requireElement<HTMLButtonElement>("#exit-map-button"),
+  scorePanel: requireElement<HTMLElement>("#score-panel"),
+  botHealthCard: requireElement<HTMLElement>(".bot-health-card"),
 };
 const audioHud: AudioHudElements = {
   toggleButton: requireElement<HTMLButtonElement>("#audio-toggle"),

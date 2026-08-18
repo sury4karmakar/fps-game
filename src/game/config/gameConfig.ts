@@ -136,7 +136,7 @@ export const BOT_DIFFICULTY_DEFINITIONS: Readonly<
   },
 };
 
-export type ArenaMapId = "training-yard" | "foundry";
+export type ArenaMapId = "training-yard" | "foundry" | "training-ground";
 
 export type ArenaMapAvailability = "available" | "planned";
 
@@ -145,6 +145,12 @@ export interface ArenaMapDefinition {
   readonly displayName: string;
   readonly description: string;
   readonly availability: ArenaMapAvailability;
+  /** Training maps may omit the opponent while core player systems are tested. */
+  readonly hasBot: boolean;
+  /** Whether temporary armor pickups are part of this map's match rules. */
+  readonly hasArmorPickups: boolean;
+  /** Whether this map runs the standard five-minute match countdown. */
+  readonly hasMatchTimer: boolean;
 }
 
 export const DEFAULT_ARENA_MAP_ID: ArenaMapId = "foundry";
@@ -157,6 +163,9 @@ export const ARENA_MAP_DEFINITIONS: Readonly<
     displayName: "Training Yard",
     description: "The original compact indoor arena.",
     availability: "available",
+    hasBot: true,
+    hasArmorPickups: true,
+    hasMatchTimer: true,
   },
   foundry: {
     id: "foundry",
@@ -164,6 +173,18 @@ export const ARENA_MAP_DEFINITIONS: Readonly<
     description:
       "An industrial arena with a furnace ring, service lanes, and a raised loading dock.",
     availability: "available",
+    hasBot: true,
+    hasArmorPickups: true,
+    hasMatchTimer: true,
+  },
+  "training-ground": {
+    id: "training-ground",
+    displayName: "Training Ground",
+    description: "A bright, open player-only space for testing core movement and weapons.",
+    availability: "available",
+    hasBot: false,
+    hasArmorPickups: false,
+    hasMatchTimer: false,
   },
 };
 
