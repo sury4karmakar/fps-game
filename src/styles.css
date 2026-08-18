@@ -412,7 +412,7 @@ body {
 
 #combat-health-hud {
   position: absolute;
-  top: 22px;
+  top: 90px;
   left: 22px;
   display: grid;
   width: 176px;
@@ -701,6 +701,7 @@ body {
   z-index: 4;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   max-width: min(calc(100vw - 36px), 620px);
   padding: 8px 10px;
@@ -751,6 +752,7 @@ body {
 }
 
 .training-navigation-status {
+  flex: 1 0 100%;
   color: #b7e4ff;
   font: 500 0.64rem/1.2 var(--font-display, sans-serif);
 }
