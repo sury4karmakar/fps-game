@@ -153,7 +153,7 @@ export interface ArenaMapDefinition {
   readonly hasMatchTimer: boolean;
 }
 
-export const DEFAULT_ARENA_MAP_ID: ArenaMapId = "foundry";
+export const DEFAULT_ARENA_MAP_ID: ArenaMapId = "training-ground";
 
 export const ARENA_MAP_DEFINITIONS: Readonly<
   Record<ArenaMapId, ArenaMapDefinition>

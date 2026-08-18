@@ -41,11 +41,13 @@ export interface MatchHudElements {
   readonly finalBotScore: HTMLElement;
   readonly actionButton: HTMLButtonElement;
   readonly difficulty: HTMLElement;
-  readonly difficultySelect: HTMLSelectElement;
+  /** Dormant while the difficulty dropdown is commented out in index.html. */
+  readonly difficultySelect?: HTMLSelectElement;
   readonly map: HTMLElement;
-  readonly mapSelect: HTMLSelectElement;
-  readonly mapDescription: HTMLElement;
-  readonly mapStatus: HTMLElement;
+  /** Dormant while the map dropdown is commented out in index.html. */
+  readonly mapSelect?: HTMLSelectElement;
+  readonly mapDescription?: HTMLElement;
+  readonly mapStatus?: HTMLElement;
   readonly loadingStatus: HTMLElement;
   readonly exitMapButton: HTMLButtonElement;
   readonly scorePanel: HTMLElement;
@@ -76,7 +78,7 @@ export class MatchManager {
     private readonly hud: MatchHudElements,
     private readonly matchDurationMs = FIVE_MINUTES_MS,
     initialConfiguration: MatchConfiguration = {
-      selectedMapId: "foundry",
+      selectedMapId: "training-ground",
       botDifficultyId: "normal",
     },
     private readonly onMatchStartRequested?: MatchStartRequestHandler,
@@ -92,11 +94,11 @@ export class MatchManager {
     this.selectedMapId = initialConfiguration.selectedMapId;
     this.populateMapSelector();
     this.hud.actionButton.addEventListener("click", this.handleAction);
-    this.hud.difficultySelect.addEventListener(
+    this.hud.difficultySelect?.addEventListener(
       "change",
       this.handleDifficultyChange,
     );
-    this.hud.mapSelect.addEventListener("change", this.handleMapChange);
+    this.hud.mapSelect?.addEventListener("change", this.handleMapChange);
     this.hud.exitMapButton.addEventListener("click", this.handleExitMap);
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
       this.update();
@@ -108,11 +110,11 @@ export class MatchManager {
     this.isDisposed = true;
     this.scene.onAfterAnimationsObservable.remove(this.updateObserver);
     this.hud.actionButton.removeEventListener("click", this.handleAction);
-    this.hud.difficultySelect.removeEventListener(
+    this.hud.difficultySelect?.removeEventListener(
       "change",
       this.handleDifficultyChange,
     );
-    this.hud.mapSelect.removeEventListener("change", this.handleMapChange);
+    this.hud.mapSelect?.removeEventListener("change", this.handleMapChange);
     this.hud.exitMapButton.removeEventListener("click", this.handleExitMap);
   }
 
@@ -159,8 +161,8 @@ export class MatchManager {
     this.hud.state.dataset.state = "playing";
     this.hud.overlay.dataset.state = "playing";
     this.hud.overlay.setAttribute("aria-busy", "false");
-    this.hud.difficultySelect.disabled = true;
-    this.hud.mapSelect.disabled = true;
+    if (this.hud.difficultySelect) this.hud.difficultySelect.disabled = true;
+    if (this.hud.mapSelect) this.hud.mapSelect.disabled = true;
     this.hud.loadingStatus.hidden = true;
     this.hud.exitMapButton.hidden = this.hasMatchTimer;
   }
@@ -183,10 +185,13 @@ export class MatchManager {
   };
 
   private readonly handleDifficultyChange = (): void => {
-    const difficultyId = this.hud.difficultySelect.value;
+    const difficultySelect = this.hud.difficultySelect;
+    const difficultyId = difficultySelect?.value;
 
-    if (!isBotDifficultyId(difficultyId) || this.matchState === "playing") {
-      this.hud.difficultySelect.value = this.selectedDifficultyId;
+    if (!difficultySelect || !difficultyId || !isBotDifficultyId(difficultyId) || this.matchState === "playing") {
+      if (difficultySelect) {
+        difficultySelect.value = this.selectedDifficultyId;
+      }
       return;
     }
 
@@ -196,15 +201,20 @@ export class MatchManager {
   };
 
   private readonly handleMapChange = (): void => {
-    const mapId = this.hud.mapSelect.value;
+    const mapSelect = this.hud.mapSelect;
+    const mapId = mapSelect?.value;
 
     if (
+      !mapSelect ||
+      !mapId ||
       !isArenaMapId(mapId) ||
       !this.isSelectableMap(mapId) ||
       this.matchState !== "waiting" ||
       this.isLoadingMap
     ) {
-      this.hud.mapSelect.value = this.selectedMapId;
+      if (mapSelect) {
+        mapSelect.value = this.selectedMapId;
+      }
       return;
     }
 
@@ -240,8 +250,8 @@ export class MatchManager {
       ? "Start Match"
       : "Enter Training Ground";
     this.hud.actionButton.disabled = false;
-    this.hud.difficultySelect.disabled = false;
-    this.hud.mapSelect.disabled = false;
+    if (this.hud.difficultySelect) this.hud.difficultySelect.disabled = false;
+    if (this.hud.mapSelect) this.hud.mapSelect.disabled = false;
     this.hud.loadingStatus.hidden = true;
     this.isLoadingMap = false;
     delete this.hud.overlay.dataset.result;
@@ -283,8 +293,8 @@ export class MatchManager {
     this.hud.finalScore.hidden = false;
     this.hud.actionButton.textContent = "Play Again";
     this.hud.actionButton.disabled = false;
-    this.hud.difficultySelect.disabled = false;
-    this.hud.mapSelect.disabled = false;
+    if (this.hud.difficultySelect) this.hud.difficultySelect.disabled = false;
+    if (this.hud.mapSelect) this.hud.mapSelect.disabled = false;
   }
 
   private setGameplayEnabled(enabled: boolean): void {
@@ -335,29 +345,29 @@ export class MatchManager {
     this.hud.botScore.textContent = String(this.botKills);
   }
 
-  private populateMapSelector(): void {
-    this.hud.mapSelect.replaceChildren();
+  private isSelectableMap(mapId: ArenaMapId): boolean {
+    const entry = getMapRegistryEntry(mapId);
+    return isArenaMapAvailable(mapId) && entry.load !== undefined;
+  }
 
+  /** Restores selector options whenever those optional controls are enabled. */
+  private populateMapSelector(): void {
+    const mapSelect = this.hud.mapSelect;
+
+    if (!mapSelect) {
+      return;
+    }
+
+    mapSelect.replaceChildren();
     for (const map of ARENA_MAPS) {
       const registryEntry = getMapRegistryEntry(map.id);
-      const available =
-        isArenaMapAvailable(map.id) && registryEntry.load !== undefined;
+      const available = isArenaMapAvailable(map.id) && registryEntry.load !== undefined;
       const option = document.createElement("option");
       option.value = map.id;
       option.textContent = available ? map.displayName : `${map.displayName} (Unavailable)`;
       option.disabled = !available;
-      this.hud.mapSelect.append(option);
+      mapSelect.append(option);
     }
-
-    if (!this.isSelectableMap(this.selectedMapId)) {
-      this.selectedMapId = ARENA_MAPS.find((map) => this.isSelectableMap(map.id))?.id
-        ?? this.selectedMapId;
-    }
-  }
-
-  private isSelectableMap(mapId: ArenaMapId): boolean {
-    const entry = getMapRegistryEntry(mapId);
-    return isArenaMapAvailable(mapId) && entry.load !== undefined;
   }
 
   private async requestMatchStart(): Promise<void> {
@@ -377,8 +387,8 @@ export class MatchManager {
 
     const selectedMap = getArenaMapDefinition(this.selectedMapId);
     this.isLoadingMap = true;
-    this.hud.difficultySelect.disabled = true;
-    this.hud.mapSelect.disabled = true;
+    if (this.hud.difficultySelect) this.hud.difficultySelect.disabled = true;
+    if (this.hud.mapSelect) this.hud.mapSelect.disabled = true;
     this.hud.actionButton.disabled = true;
     this.hud.actionButton.textContent = "Loading…";
     this.hud.overlay.dataset.state = "loading";
@@ -400,8 +410,8 @@ export class MatchManager {
       }
 
       this.isLoadingMap = false;
-      this.hud.difficultySelect.disabled = false;
-      this.hud.mapSelect.disabled = false;
+      if (this.hud.difficultySelect) this.hud.difficultySelect.disabled = false;
+      if (this.hud.mapSelect) this.hud.mapSelect.disabled = false;
       this.hud.actionButton.disabled = false;
       this.hud.actionButton.textContent = "Try Again";
       this.hud.overlay.dataset.state = "waiting";
@@ -419,17 +429,20 @@ export class MatchManager {
     const map = getArenaMapDefinition(this.selectedMapId);
     this.hud.difficulty.textContent = difficulty.displayName;
     this.hud.difficulty.dataset.difficulty = difficulty.id;
-    this.hud.difficultySelect.value = difficulty.id;
+    if (this.hud.difficultySelect) {
+      this.hud.difficultySelect.value = difficulty.id;
+    }
     this.hud.map.textContent = map.displayName;
     this.hud.map.dataset.map = map.id;
-    this.hud.mapSelect.value = map.id;
-    this.hud.mapDescription.textContent = this.isSelectableMap(map.id)
-      ? map.description
-      : `${map.description} This map is unavailable in this build.`;
-    this.hud.mapStatus.textContent = this.isSelectableMap(map.id)
-      ? `${map.displayName} selected. ${map.description}`
-      : `${map.displayName} is unavailable in this build.`;
-    this.hud.eyebrow.textContent = `${map.displayName} · ${difficulty.displayName} bot`;
+    if (this.hud.mapSelect) {
+      this.hud.mapSelect.value = map.id;
+    }
+    if (this.hud.mapDescription) {
+      this.hud.mapDescription.textContent = map.description;
+    }
+    if (this.hud.mapStatus) {
+      this.hud.mapStatus.textContent = `${map.displayName} selected. ${map.description}`;
+    }
   }
 
   private updateTimerHud(force = false): void {
