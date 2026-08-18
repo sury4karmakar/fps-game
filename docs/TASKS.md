@@ -4,13 +4,11 @@
 
 - [ ] Add higher-quality models, textures, lighting, audio, and visual effects.
 - [ ] Add pause, accessibility, and onboarding improvements.
-- [ ] Add performance presets for lower-powered devices.
 - [ ] Add saved settings and local match statistics.
 - [ ] Prepare and publish a production web build.
 
 ## Deferred Polish and Developer Tools
 
-- [ ] Add basic accessibility improvements for new controls and effects.
 - [ ] Add developer test controls for maps, weapons, bot difficulties, and pickups.
 
 ## Possible Future Multiplayer Phase
