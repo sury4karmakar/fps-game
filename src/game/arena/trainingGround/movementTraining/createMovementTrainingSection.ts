@@ -65,6 +65,7 @@ function createSign(
   text: string,
   position: Vector3,
   color: string,
+  size: { width: number; height: number } = { width: 4.2, height: 0.95 },
 ): void {
   const texture = new DynamicTexture(`${name}-label-texture`, { width: 1024, height: 240 }, context.scene, false);
   texture.hasAlpha = true;
@@ -82,7 +83,7 @@ function createSign(
   material.emissiveTexture = texture;
   material.opacityTexture = texture;
   material.backFaceCulling = false;
-  const sign = CreatePlane(`${name}-label`, { width: 4.2, height: 0.95 }, context.scene);
+  const sign = CreatePlane(`${name}-label`, size, context.scene);
   sign.parent = root;
   sign.position.copyFrom(position);
   sign.billboardMode = 2;
@@ -201,6 +202,41 @@ export function createTrainingGroundSection(
     new Vector3(COURSE_ORIGIN_X, platformHeight + 1.6, PLAYER_START_LOCAL_Z),
   ));
 
+  // Guidance is deliberately static and emissive, so it stays legible at all
+  // quality presets without depending on shadows, animation, or timed cues.
+  createSign(
+    context, root, "movement-training-title", "MOVEMENT TRAINING",
+    new Vector3(0, 4.15, -23), "#e8f8ff", { width: 7, height: 1.3 },
+  );
+  createSign(
+    context, root, "movement-training-player-start", "PLAYER START • WASD MOVE",
+    new Vector3(0, 2.8, PLAYER_START_LOCAL_Z + 2), "#aee8ff", { width: 6, height: 1.1 },
+  );
+  createSign(
+    context, root, "movement-training-strafe-guide", "STRAFE • A / D",
+    new Vector3(0, 2.9, -15), "#ffe0a8", { width: 5, height: 1 },
+  );
+  createSign(
+    context, root, "movement-training-jump-guide", "JUMP • SPACE",
+    new Vector3(0, 2.35, -8), "#ffe0a8", { width: 5, height: 1 },
+  );
+  createSign(
+    context, root, "movement-training-crouch-guide", "CROUCH • LEFT CTRL",
+    new Vector3(0, 2.75, 2), "#ffe0a8", { width: 6, height: 1 },
+  );
+  createSign(
+    context, root, "movement-training-cover-guide", "COVER • CHANGE ROUTE",
+    new Vector3(0, 3.2, 10.8), "#ffe0a8", { width: 6, height: 1 },
+  );
+  createSign(
+    context, root, "movement-training-sprint-guide", "SPRINT • SHIFT",
+    new Vector3(0, 2.8, 16), "#b6f4c8", { width: 5, height: 1 },
+  );
+  createSign(
+    context, root, "movement-training-finish", "FINISH • PRACTICE BOT",
+    new Vector3(0, platformHeight + 3.1, FINISH_ZONE_LOCAL_Z), "#b6f4c8", { width: 6, height: 1 },
+  );
+
   const exitMaterial = createMaterial(context, "movement-training-exit-material", new Color3(0.9, 0.25, 0.2));
   const exitControl = CreateBox(
     "movement-training-exit-control",
@@ -213,7 +249,7 @@ export function createTrainingGroundSection(
   exitControl.isPickable = true;
   createSign(
     context, root, "movement-training-exit", "SHOOT: EXIT TRAINING",
-    new Vector3(0, 1.05, -COURSE_DEPTH / 2 + 0.78), "#ffe2dd",
+    new Vector3(0, 1.05, -COURSE_DEPTH / 2 + 0.78), "#ffe2dd", { width: 5.4, height: 1 },
   );
   resources.push(context.interactions.registerShotTarget(exitControl, () => context.returnToHub()));
 
