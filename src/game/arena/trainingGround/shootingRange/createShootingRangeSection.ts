@@ -7,6 +7,7 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder.pure.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Disposable } from "../../../core/contracts";
+import type { WeaponId } from "../../../config/gameConfig";
 import type {
   TrainingGroundSection,
   TrainingGroundSectionContext,
@@ -18,7 +19,7 @@ const RANGE_DEPTH = 68;
 const WALL_HEIGHT = 5;
 
 interface StationDefinition {
-  readonly id: string;
+  readonly id: WeaponId;
   readonly label: string;
   readonly position: Vector3;
   readonly color: Color3;
@@ -80,6 +81,7 @@ export function createTrainingGroundSection(
 ): TrainingGroundSection {
   const root = new TransformNode("training-ground-shooting-range-root", context.scene);
   root.position.z = RANGE_ORIGIN_Z;
+  context.weapon.setTrainingInventoryEnabled(true);
   const resources: Disposable[] = [];
   const colliders: AbstractMesh[] = [];
   const floorMaterial = createMaterial(context.scene, "shooting-range-floor-material", new Color3(0.12, 0.16, 0.19));
@@ -120,6 +122,10 @@ export function createTrainingGroundSection(
   startControl.isPickable = true;
   createSign(context.scene, root, "shooting-range-start", "SHOOT: START TRAINING", new Vector3(-5.2, 1.1, -19.05), "#d6ffe6");
   resources.push(context.interactions.registerShotTarget(startControl, () => {
+    if (!context.weapon.hasTrainingWeapon) {
+      context.weapon.showTrainingWeaponRequired();
+      return;
+    }
     modePanel.setEnabled(true);
     startMaterial.emissiveColor = new Color3(0.14, 0.38, 0.24);
   }));
@@ -142,6 +148,7 @@ export function createTrainingGroundSection(
     stationMesh.isPickable = false;
     createSign(context.scene, root, `shooting-range-${station.id}-station`, station.label, station.position.add(new Vector3(0, 1.85, -0.85)), "#f4fbff");
     resources.push(context.interactions.registerWalkover(root.position.add(station.position), 2.7, () => {
+      context.weapon.equipTrainingWeapon(station.id);
       material.emissiveColor = station.color.scale(0.58);
     }));
   }
