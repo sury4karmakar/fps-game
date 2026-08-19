@@ -9,6 +9,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Disposable } from "../../../core/contracts";
 import type { WeaponId } from "../../../config/gameConfig";
 import { TrainingRangeController } from "./TrainingRangeController";
+import { TrainingRangeTargetController } from "./TrainingRangeTargetController";
 import { TRAINING_MODES, type TrainingModeId } from "./trainingModes";
 import type {
   TrainingGroundSection,
@@ -114,8 +115,17 @@ export function createTrainingGroundSection(
     hard: new Color3(0.94, 0.27, 0.24),
   };
   const modeMaterials = new Map<TrainingModeId, StandardMaterial>();
-  const rangeController = new TrainingRangeController({
+  let rangeController: TrainingRangeController;
+  const targetController = new TrainingRangeTargetController(
+    context.scene,
+    root,
+    context.interactions,
+    () => rangeController.recordElimination(),
+  );
+  resources.push(targetController);
+  rangeController = new TrainingRangeController({
     onModeStarted: (definition) => {
+      targetController.start(definition);
       modeMaterials.forEach((material, modeId) => {
         material.emissiveColor = modeId === definition.id
           ? modeColors[modeId].scale(0.65)
@@ -123,6 +133,7 @@ export function createTrainingGroundSection(
       });
     },
     onModeReset: () => {
+      targetController.reset();
       modeMaterials.forEach((material, modeId) => {
         material.emissiveColor = modeColors[modeId].scale(0.1);
       });

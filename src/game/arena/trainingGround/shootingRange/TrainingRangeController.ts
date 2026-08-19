@@ -13,11 +13,16 @@ export interface TrainingRangeControllerCallbacks {
 /** Owns the one-active-mode lifecycle; target behavior attaches through callbacks. */
 export class TrainingRangeController implements Disposable {
   private activeMode: TrainingModeDefinition | null = null;
+  private sessionEliminations = 0;
 
   public constructor(private readonly callbacks: TrainingRangeControllerCallbacks = {}) {}
 
   public get activeModeId(): TrainingModeId | null {
     return this.activeMode?.id ?? null;
+  }
+
+  public get eliminationCount(): number {
+    return this.sessionEliminations;
   }
 
   public start(modeId: TrainingModeId): void {
@@ -26,6 +31,7 @@ export class TrainingRangeController implements Disposable {
     }
 
     this.reset();
+    this.sessionEliminations = 0;
     this.activeMode = TRAINING_MODE_DEFINITIONS[modeId];
     this.callbacks.onModeStarted?.(this.activeMode);
   }
@@ -38,6 +44,12 @@ export class TrainingRangeController implements Disposable {
     const previousMode = this.activeMode;
     this.activeMode = null;
     this.callbacks.onModeReset?.(previousMode);
+  }
+
+  public recordElimination(): void {
+    if (this.activeMode) {
+      this.sessionEliminations += 1;
+    }
   }
 
   public dispose(): void {

@@ -12,13 +12,20 @@ interface WalkoverTarget {
   inside: boolean;
 }
 
+export interface TrainingGroundHitResult {
+  readonly damageApplied: boolean;
+  readonly eliminated: boolean;
+}
+
+type ShotTargetHandler = (damage: number) => TrainingGroundHitResult | void;
+
 /**
  * Shared, section-scoped interaction bridge. It exposes only direct shot
  * targets and walk-over volumes; weapon damage and Foundry combat stay out of
  * Training Ground section code.
  */
 export class TrainingGroundInteractionController implements Disposable {
-  private readonly shotTargets = new Map<AbstractMesh, () => void>();
+  private readonly shotTargets = new Map<AbstractMesh, ShotTargetHandler>();
   private readonly walkoverTargets = new Set<WalkoverTarget>();
   private readonly observer: Observer<Scene>;
 
@@ -33,17 +40,16 @@ export class TrainingGroundInteractionController implements Disposable {
     return this.shotTargets.has(mesh);
   }
 
-  public activateShot(mesh: AbstractMesh): boolean {
+  public activateShot(mesh: AbstractMesh, damage: number): TrainingGroundHitResult | null {
     const handler = this.shotTargets.get(mesh);
     if (!handler) {
-      return false;
+      return null;
     }
 
-    handler();
-    return true;
+    return handler(damage) ?? { damageApplied: false, eliminated: false };
   }
 
-  public registerShotTarget(mesh: AbstractMesh, onActivate: () => void): Disposable {
+  public registerShotTarget(mesh: AbstractMesh, onActivate: ShotTargetHandler): Disposable {
     this.shotTargets.set(mesh, onActivate);
     return {
       dispose: () => this.shotTargets.delete(mesh),
