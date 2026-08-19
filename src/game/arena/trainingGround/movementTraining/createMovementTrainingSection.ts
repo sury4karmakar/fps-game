@@ -7,6 +7,7 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
 import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder.pure.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Disposable } from "../../../core/contracts";
+import { MovementTrainingPracticeBotController } from "./MovementTrainingPracticeBotController";
 import type {
   TrainingGroundSection,
   TrainingGroundSectionContext,
@@ -189,13 +190,16 @@ export function createTrainingGroundSection(
   );
   createCollisionBox(
     context, root, colliders, "movement-training-platform",
-    { width: 9, height: platformHeight, depth: 4.5 }, new Vector3(0, platformHeight / 2, 21.65), platformMaterial, true,
+    { width: 9, height: platformHeight, depth: 8.8 }, new Vector3(0, platformHeight / 2, 23.8), platformMaterial, true,
   );
-  createCollisionBox(
-    context, root, colliders, "movement-training-down-ramp",
-    { width: 7.5, height: 0.28, depth: Math.hypot(platformHeight, rampRun) },
-    new Vector3(0, platformHeight / 2, 26.3), platformMaterial, true, rampAngle,
-  );
+
+  // This is a static visual destination only. It remains in the far finish
+  // zone and cannot damage, be damaged, score, respawn, or leave the course.
+  resources.push(new MovementTrainingPracticeBotController(
+    context.scene,
+    new Vector3(COURSE_ORIGIN_X, platformHeight, FINISH_ZONE_LOCAL_Z),
+    new Vector3(COURSE_ORIGIN_X, platformHeight + 1.6, PLAYER_START_LOCAL_Z),
+  ));
 
   const exitMaterial = createMaterial(context, "movement-training-exit-material", new Color3(0.9, 0.25, 0.2));
   const exitControl = CreateBox(
