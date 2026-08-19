@@ -43,10 +43,12 @@ function createCollisionBox(
   position: Vector3,
   material: StandardMaterial,
   walkable = false,
+  rotationX = 0,
 ): void {
   const mesh = CreateBox(name, size, context.scene);
   mesh.parent = root;
   mesh.position.copyFrom(position);
+  mesh.rotation.x = rotationX;
   mesh.material = material;
   mesh.checkCollisions = true;
   mesh.isPickable = true;
@@ -98,6 +100,8 @@ export function createTrainingGroundSection(
   const floorMaterial = createMaterial(context, "movement-training-floor-material", new Color3(0.12, 0.2, 0.25));
   const wallMaterial = createMaterial(context, "movement-training-wall-material", new Color3(0.25, 0.34, 0.39));
   const boundaryMaterial = createMaterial(context, "movement-training-boundary-material", new Color3(0.16, 0.42, 0.52));
+  const obstacleMaterial = createMaterial(context, "movement-training-obstacle-material", new Color3(0.7, 0.34, 0.16));
+  const platformMaterial = createMaterial(context, "movement-training-platform-material", new Color3(0.26, 0.66, 0.45));
 
   createCollisionBox(
     context, root, colliders, "movement-training-floor",
@@ -138,6 +142,60 @@ export function createTrainingGroundSection(
     zone.material = material;
     zone.isPickable = false;
   }
+
+  // Alternating barriers leave a generous route on opposite sides, creating a
+  // repeatable left/right strafe sequence without trapping the player.
+  createCollisionBox(
+    context, root, colliders, "movement-training-strafe-barrier-west",
+    { width: 9, height: 2.2, depth: 1.25 }, new Vector3(-4.7, 1.1, -17), obstacleMaterial,
+  );
+  createCollisionBox(
+    context, root, colliders, "movement-training-strafe-barrier-east",
+    { width: 9, height: 2.2, depth: 1.25 }, new Vector3(4.7, 1.1, -12), obstacleMaterial,
+  );
+
+  // This spans the navigable width, so the configured jump height is required
+  // to continue; it is kept low enough for a reliable landing on the floor.
+  createCollisionBox(
+    context, root, colliders, "movement-training-jump-hurdle",
+    { width: COURSE_WIDTH - 1.4, height: 0.62, depth: 0.65 }, new Vector3(0, 0.31, -6), obstacleMaterial,
+  );
+
+  // The ceiling is high enough for the crouched collider but blocks the
+  // standing collider across the full lane, preventing a bypass route.
+  createCollisionBox(
+    context, root, colliders, "movement-training-crouch-ceiling",
+    { width: COURSE_WIDTH - 1.2, height: 0.5, depth: 5.4 }, new Vector3(0, 1.9, 2), obstacleMaterial,
+  );
+
+  // Offset cover blocks force a route decision while retaining clear paths
+  // around their outside edges for a no-dead-end practice course.
+  createCollisionBox(
+    context, root, colliders, "movement-training-cover-west",
+    { width: 11, height: 2.5, depth: 2.2 }, new Vector3(-3.7, 1.25, 8.5), obstacleMaterial,
+  );
+  createCollisionBox(
+    context, root, colliders, "movement-training-cover-east",
+    { width: 11, height: 2.5, depth: 2.2 }, new Vector3(3.7, 1.25, 13), obstacleMaterial,
+  );
+
+  const platformHeight = 1.45;
+  const rampRun = 4.8;
+  const rampAngle = Math.atan2(platformHeight, rampRun);
+  createCollisionBox(
+    context, root, colliders, "movement-training-up-ramp",
+    { width: 7.5, height: 0.28, depth: Math.hypot(platformHeight, rampRun) },
+    new Vector3(0, platformHeight / 2, 17), platformMaterial, true, -rampAngle,
+  );
+  createCollisionBox(
+    context, root, colliders, "movement-training-platform",
+    { width: 9, height: platformHeight, depth: 4.5 }, new Vector3(0, platformHeight / 2, 21.65), platformMaterial, true,
+  );
+  createCollisionBox(
+    context, root, colliders, "movement-training-down-ramp",
+    { width: 7.5, height: 0.28, depth: Math.hypot(platformHeight, rampRun) },
+    new Vector3(0, platformHeight / 2, 26.3), platformMaterial, true, rampAngle,
+  );
 
   const exitMaterial = createMaterial(context, "movement-training-exit-material", new Color3(0.9, 0.25, 0.2));
   const exitControl = CreateBox(
