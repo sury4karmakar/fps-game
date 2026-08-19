@@ -8,6 +8,8 @@ import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder.pure.j
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Disposable } from "../../../core/contracts";
 import type { WeaponId } from "../../../config/gameConfig";
+import { TrainingRangeController } from "./TrainingRangeController";
+import { TRAINING_MODES, type TrainingModeId } from "./trainingModes";
 import type {
   TrainingGroundSection,
   TrainingGroundSectionContext,
@@ -106,13 +108,63 @@ export function createTrainingGroundSection(
   const modePanel = new TransformNode("shooting-range-mode-panel", context.scene);
   modePanel.parent = root;
   modePanel.setEnabled(false);
+  const modeColors: Readonly<Record<TrainingModeId, Color3>> = {
+    easy: new Color3(0.2, 0.76, 0.42),
+    medium: new Color3(0.96, 0.66, 0.15),
+    hard: new Color3(0.94, 0.27, 0.24),
+  };
+  const modeMaterials = new Map<TrainingModeId, StandardMaterial>();
+  const rangeController = new TrainingRangeController({
+    onModeStarted: (definition) => {
+      modeMaterials.forEach((material, modeId) => {
+        material.emissiveColor = modeId === definition.id
+          ? modeColors[modeId].scale(0.65)
+          : modeColors[modeId].scale(0.1);
+      });
+    },
+    onModeReset: () => {
+      modeMaterials.forEach((material, modeId) => {
+        material.emissiveColor = modeColors[modeId].scale(0.1);
+      });
+    },
+  });
+  resources.push(rangeController);
   const modeMaterial = createMaterial(context.scene, "shooting-range-mode-panel-material", new Color3(0.28, 0.64, 0.88));
-  const modePanelMesh = CreateBox("shooting-range-mode-panel-display", { width: 12, height: 3.2, depth: 0.35 }, context.scene);
+  const modePanelMesh = CreateBox("shooting-range-mode-panel-display", { width: 15, height: 4.2, depth: 0.35 }, context.scene);
   modePanelMesh.parent = modePanel;
-  modePanelMesh.position.set(0, 2.15, -12);
+  modePanelMesh.position.set(0, 2.3, -12);
   modePanelMesh.material = modeMaterial;
   modePanelMesh.isPickable = false;
-  createSign(context.scene, modePanel, "shooting-range-mode-title", "SELECT MODE: EASY  •  MEDIUM  •  HARD", new Vector3(0, 2.15, -12.22), "#f2fbff");
+  createSign(context.scene, modePanel, "shooting-range-mode-title", "SHOOT A TRAINING MODE", new Vector3(0, 3.35, -12.22), "#f2fbff");
+  TRAINING_MODES.forEach((definition, index) => {
+    const material = createMaterial(
+      context.scene,
+      `shooting-range-${definition.id}-mode-material`,
+      modeColors[definition.id],
+    );
+    modeMaterials.set(definition.id, material);
+    const control = CreateBox(
+      `shooting-range-${definition.id}-mode-control`,
+      { width: 4.15, height: 1.35, depth: 0.42 },
+      context.scene,
+    );
+    control.parent = modePanel;
+    control.position.set((index - 1) * 4.8, 1.85, -12.24);
+    control.material = material;
+    control.isPickable = true;
+    createSign(
+      context.scene,
+      modePanel,
+      `shooting-range-${definition.id}-mode`,
+      definition.displayName.toUpperCase(),
+      new Vector3((index - 1) * 4.8, 1.85, -12.5),
+      "#f7fbff",
+    );
+    resources.push(context.interactions.registerShotTarget(
+      control,
+      () => rangeController.start(definition.id),
+    ));
+  });
 
   const startMaterial = createMaterial(context.scene, "shooting-range-start-material", new Color3(0.16, 0.82, 0.47));
   const startControl = CreateBox("shooting-range-start-control", { width: 4.4, height: 2.2, depth: 0.8 }, context.scene);
@@ -126,6 +178,7 @@ export function createTrainingGroundSection(
       context.weapon.showTrainingWeaponRequired();
       return;
     }
+    rangeController.reset();
     modePanel.setEnabled(true);
     startMaterial.emissiveColor = new Color3(0.14, 0.38, 0.24);
   }));
