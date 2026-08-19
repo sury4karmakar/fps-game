@@ -23,6 +23,7 @@ export class TrainingGroundSectionController {
     private readonly weapon: TrainingWeaponControlPort,
     private readonly hubSpawn: ArenaSpawnPoint,
     private readonly interactions: TrainingGroundInteractionController,
+    private readonly trainingRangeStatus: HTMLElement,
     private readonly registerCollisionMeshes: (meshes: readonly import("@babylonjs/core/Meshes/abstractMesh.js").AbstractMesh[]) => import("../../../core/contracts").Disposable,
     private readonly onHubReturned?: () => void,
   ) {}
@@ -62,6 +63,7 @@ export class TrainingGroundSectionController {
       scene: this.scene,
       player: this.player,
       weapon: this.weapon,
+      trainingRangeStatus: this.trainingRangeStatus,
       interactions: this.interactions,
       registerCollisionMeshes: this.registerCollisionMeshes,
       returnToHub: () => this.returnToHub(),

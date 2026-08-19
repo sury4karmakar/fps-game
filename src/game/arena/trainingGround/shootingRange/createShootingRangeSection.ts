@@ -9,6 +9,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Disposable } from "../../../core/contracts";
 import type { WeaponId } from "../../../config/gameConfig";
 import { TrainingRangeController } from "./TrainingRangeController";
+import { TrainingRangeHud } from "./TrainingRangeHud";
 import { TrainingRangeTargetController } from "./TrainingRangeTargetController";
 import { TRAINING_MODES, type TrainingModeId } from "./trainingModes";
 import type {
@@ -86,6 +87,8 @@ export function createTrainingGroundSection(
   root.position.z = RANGE_ORIGIN_Z;
   context.weapon.setTrainingInventoryEnabled(true);
   const resources: Disposable[] = [];
+  const rangeHud = new TrainingRangeHud(context.trainingRangeStatus);
+  resources.push(rangeHud);
   const colliders: AbstractMesh[] = [];
   const floorMaterial = createMaterial(context.scene, "shooting-range-floor-material", new Color3(0.12, 0.16, 0.19));
   const wallMaterial = createMaterial(context.scene, "shooting-range-wall-material", new Color3(0.28, 0.32, 0.35));
@@ -126,6 +129,7 @@ export function createTrainingGroundSection(
   rangeController = new TrainingRangeController({
     onModeStarted: (definition) => {
       targetController.start(definition);
+      rangeHud.showActiveMode(definition, rangeController.eliminationCount);
       modeMaterials.forEach((material, modeId) => {
         material.emissiveColor = modeId === definition.id
           ? modeColors[modeId].scale(0.65)
@@ -134,9 +138,13 @@ export function createTrainingGroundSection(
     },
     onModeReset: () => {
       targetController.reset();
+      rangeHud.reset();
       modeMaterials.forEach((material, modeId) => {
         material.emissiveColor = modeColors[modeId].scale(0.1);
       });
+    },
+    onEliminationRecorded: (definition, count) => {
+      rangeHud.updateEliminations(definition, count);
     },
   });
   resources.push(rangeController);
@@ -193,6 +201,7 @@ export function createTrainingGroundSection(
     rangeController.reset();
     modePanel.setEnabled(true);
     startMaterial.emissiveColor = new Color3(0.14, 0.38, 0.24);
+    rangeHud.showModeSelection();
   }));
 
   const resetRangeToIdle = (): void => {

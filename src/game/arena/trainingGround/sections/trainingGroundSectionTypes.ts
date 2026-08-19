@@ -10,6 +10,7 @@ export interface TrainingGroundSectionContext {
   readonly scene: Scene;
   readonly player: PlayerControlPort;
   readonly weapon: TrainingWeaponControlPort;
+  readonly trainingRangeStatus: HTMLElement;
   readonly interactions: TrainingGroundInteractionController;
   registerCollisionMeshes(meshes: readonly AbstractMesh[]): Disposable;
   returnToHub(): void;

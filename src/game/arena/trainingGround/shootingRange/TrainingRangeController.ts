@@ -8,6 +8,7 @@ import {
 export interface TrainingRangeControllerCallbacks {
   onModeStarted?(definition: TrainingModeDefinition): void;
   onModeReset?(definition: TrainingModeDefinition): void;
+  onEliminationRecorded?(definition: TrainingModeDefinition, count: number): void;
 }
 
 /** Owns the one-active-mode lifecycle; target behavior attaches through callbacks. */
@@ -49,6 +50,7 @@ export class TrainingRangeController implements Disposable {
   public recordElimination(): void {
     if (this.activeMode) {
       this.sessionEliminations += 1;
+      this.callbacks.onEliminationRecorded?.(this.activeMode, this.sessionEliminations);
     }
   }
 
