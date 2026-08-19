@@ -177,7 +177,8 @@ export function createTrainingGroundSection(
     ));
   });
 
-  const startMaterial = createMaterial(context.scene, "shooting-range-start-material", new Color3(0.16, 0.82, 0.47));
+  const startColor = new Color3(0.16, 0.82, 0.47);
+  const startMaterial = createMaterial(context.scene, "shooting-range-start-material", startColor);
   const startControl = CreateBox("shooting-range-start-control", { width: 4.4, height: 2.2, depth: 0.8 }, context.scene);
   startControl.parent = root;
   startControl.position.set(-5.2, 1.1, -18.6);
@@ -194,6 +195,12 @@ export function createTrainingGroundSection(
     startMaterial.emissiveColor = new Color3(0.14, 0.38, 0.24);
   }));
 
+  const resetRangeToIdle = (): void => {
+    rangeController.reset();
+    modePanel.setEnabled(false);
+    startMaterial.emissiveColor = startColor.scale(0.12);
+  };
+
   const exitMaterial = createMaterial(context.scene, "shooting-range-exit-material", new Color3(0.92, 0.28, 0.2));
   const exitControl = CreateBox("shooting-range-exit-control", { width: 4.4, height: 2.2, depth: 0.8 }, context.scene);
   exitControl.parent = root;
@@ -201,7 +208,10 @@ export function createTrainingGroundSection(
   exitControl.material = exitMaterial;
   exitControl.isPickable = true;
   createSign(context.scene, root, "shooting-range-exit", "SHOOT: EXIT RANGE", new Vector3(5.2, 1.1, -19.05), "#ffe2dd");
-  resources.push(context.interactions.registerShotTarget(exitControl, context.returnToHub));
+  resources.push(context.interactions.registerShotTarget(exitControl, () => {
+    resetRangeToIdle();
+    context.returnToHub();
+  }));
 
   for (const station of WEAPON_STATIONS) {
     const material = createMaterial(context.scene, `shooting-range-${station.id}-station-material`, station.color);
@@ -226,7 +236,10 @@ export function createTrainingGroundSection(
   ammoStation.isPickable = false;
   createSign(context.scene, root, "shooting-range-ammo-station", "AMMUNITION", ammoPosition.add(new Vector3(0, 1.85, -0.8)), "#fff4bc");
   resources.push(context.interactions.registerWalkover(root.position.add(ammoPosition), 3.2, () => {
-    ammoMaterial.emissiveColor = new Color3(0.75, 0.58, 0.1);
+    const refill = context.weapon.refillTrainingWeapon();
+    ammoMaterial.emissiveColor = refill.status === "refilled"
+      ? new Color3(0.75, 0.58, 0.1)
+      : new Color3(0.3, 0.22, 0.05);
   }));
 
   context.player.respawn({
@@ -239,6 +252,7 @@ export function createTrainingGroundSection(
     id: "shooting-range",
     root,
     dispose: () => {
+      resetRangeToIdle();
       resources.splice(0).reverse().forEach((resource) => resource.dispose());
       root.dispose(false, true);
     },
