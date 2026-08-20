@@ -1,5 +1,4 @@
-import type { AudioSystem } from "../audio/AudioSystem";
-import type { PlayerController } from "../player/PlayerController";
+import type { AudioSettingsPort, PlayerSettingsPort } from "../core/contracts";
 
 export type GraphicsQualityId = "performance" | "balanced" | "high";
 
@@ -32,8 +31,8 @@ export class SettingsManager {
 
   public constructor(
     private readonly hud: SettingsHudElements,
-    private readonly playerController: PlayerController,
-    private readonly audioSystem: AudioSystem,
+    private readonly playerController: PlayerSettingsPort,
+    private readonly audioSystem: AudioSettingsPort,
     private readonly options: SettingsManagerOptions,
   ) {
     this.hud.mouseSensitivity.addEventListener("input", this.handleMouseSensitivity);

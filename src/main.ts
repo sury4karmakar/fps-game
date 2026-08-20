@@ -37,6 +37,7 @@ const weaponHud: WeaponHudElements = {
   ammoCount: requireElement<HTMLElement>("#ammo-count"),
   reloadStatus: requireElement<HTMLElement>("#reload-status"),
   hitMarker: requireElement<HTMLElement>("#hit-marker"),
+  trainingFeedback: requireElement<HTMLElement>("#training-weapon-feedback"),
 };
 const combatHud: CombatHudElements = {
   playerHealth: requireElement<HTMLElement>("#player-health"),
@@ -78,6 +79,7 @@ const matchHud: MatchHudElements = {
   movementTrainingButton: requireElement<HTMLButtonElement>("#movement-training-button"),
   returnToHubButton: requireElement<HTMLButtonElement>("#return-to-hub-button"),
   trainingNavigationStatus: requireElement<HTMLElement>("#training-navigation-status"),
+  trainingRangeStatus: requireElement<HTMLElement>("#training-range-status"),
   scorePanel: requireElement<HTMLElement>("#score-panel"),
   botHealthCard: requireElement<HTMLElement>(".bot-health-card"),
 };

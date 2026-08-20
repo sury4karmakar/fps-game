@@ -1,9 +1,7 @@
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import { getMapRegistryEntry } from "../arena/mapRegistry";
-import type { BotAI } from "../bot/BotAI";
-import type { AudioSystem } from "../audio/AudioSystem";
-import type { CombatSystem, KillOwner } from "../combat/CombatSystem";
+import type { TrainingGroundSectionId } from "../arena/trainingGround/sections/trainingGroundSectionTypes";
 import {
   ARENA_MAPS,
   getArenaMapDefinition,
@@ -15,8 +13,14 @@ import {
   type BotDifficultyId,
   type MatchConfiguration,
 } from "../config/gameConfig";
-import type { PlayerController } from "../player/PlayerController";
-import type { WeaponSystem } from "../weapon/WeaponSystem";
+import type {
+  BotControlPort,
+  KillOwner,
+  MatchAudioPort,
+  MatchCombatPort,
+  PlayerControlPort,
+  WeaponControlPort,
+} from "../core/contracts";
 
 const FIVE_MINUTES_MS = 5 * 60 * 1_000;
 
@@ -27,11 +31,11 @@ export type MatchStartRequestHandler = (
   configuration: MatchConfiguration,
 ) => Promise<void> | void;
 
-export type TrainingSectionId = "shooting-range" | "movement-training";
-
 export type TrainingSectionRequestHandler = (
-  sectionId: TrainingSectionId,
+  sectionId: TrainingGroundSectionId,
 ) => Promise<void> | void;
+
+export type TrainingHubRequestHandler = () => void;
 
 export interface MatchHudElements {
   readonly state: HTMLElement;
@@ -59,7 +63,9 @@ export interface MatchHudElements {
   readonly trainingNavigation: HTMLElement;
   readonly shootingRangeButton: HTMLButtonElement;
   readonly movementTrainingButton: HTMLButtonElement;
+  readonly returnToHubButton: HTMLButtonElement;
   readonly trainingNavigationStatus: HTMLElement;
+  readonly trainingRangeStatus: HTMLElement;
   readonly scorePanel: HTMLElement;
   readonly botHealthCard: HTMLElement;
 }
@@ -81,11 +87,11 @@ export class MatchManager {
 
   public constructor(
     private readonly scene: Scene,
-    private readonly playerController: PlayerController,
-    private readonly combatSystem: CombatSystem,
-    private readonly botAI: BotAI,
-    private readonly weaponSystem: WeaponSystem,
-    private readonly audioSystem: AudioSystem,
+    private readonly playerController: PlayerControlPort,
+    private readonly combatSystem: MatchCombatPort,
+    private readonly botAI: BotControlPort,
+    private readonly weaponSystem: WeaponControlPort,
+    private readonly audioSystem: MatchAudioPort,
     private readonly hud: MatchHudElements,
     private readonly matchDurationMs = FIVE_MINUTES_MS,
     initialConfiguration: MatchConfiguration = {
@@ -96,6 +102,7 @@ export class MatchManager {
     private readonly botEnabled = true,
     private readonly hasMatchTimer = true,
     private readonly onTrainingSectionRequested?: TrainingSectionRequestHandler,
+    private readonly onTrainingHubRequested?: TrainingHubRequestHandler,
   ) {
     if (!Number.isFinite(matchDurationMs) || matchDurationMs <= 0) {
       throw new Error("Match duration must be a positive number.");
@@ -114,6 +121,7 @@ export class MatchManager {
     this.hud.exitMapButton.addEventListener("click", this.handleExitMap);
     this.hud.shootingRangeButton.addEventListener("click", this.handleShootingRange);
     this.hud.movementTrainingButton.addEventListener("click", this.handleMovementTraining);
+    this.hud.returnToHubButton.addEventListener("click", this.handleReturnToHub);
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => {
       this.update();
     });
@@ -132,10 +140,11 @@ export class MatchManager {
     this.hud.exitMapButton.removeEventListener("click", this.handleExitMap);
     this.hud.shootingRangeButton.removeEventListener("click", this.handleShootingRange);
     this.hud.movementTrainingButton.removeEventListener("click", this.handleMovementTraining);
+    this.hud.returnToHubButton.removeEventListener("click", this.handleReturnToHub);
   }
 
   public recordKill(killer: KillOwner): void {
-    if (this.matchState !== "playing") {
+    if (this.matchState !== "playing" || !this.hasMatchTimer) {
       return;
     }
 
@@ -150,6 +159,16 @@ export class MatchManager {
 
   public get state(): MatchState {
     return this.matchState;
+  }
+
+  /** Lets an in-world section exit synchronize the shared training navigation. */
+  public reportTrainingHubReturned(): void {
+    if (this.hasMatchTimer || this.matchState !== "playing") {
+      return;
+    }
+
+    this.hud.returnToHubButton.hidden = true;
+    this.setTrainingNavigationState("ready");
   }
 
   public startMatch(): void {
@@ -167,13 +186,15 @@ export class MatchManager {
 
     this.combatSystem.resetForMatch(now);
     this.weaponSystem.resetForMatch();
-    this.audioSystem.playMatchStart();
+    if (this.hasMatchTimer) {
+      this.audioSystem.playMatchStart();
+    }
     this.setGameplayEnabled(true);
     this.updateScoreHud();
     if (this.hasMatchTimer) {
       this.updateTimerHud(true);
     }
-    this.hud.state.textContent = "LIVE";
+    this.hud.state.textContent = this.hasMatchTimer ? "LIVE" : "PRACTICE";
     this.hud.state.dataset.state = "playing";
     this.hud.overlay.dataset.state = "playing";
     this.hud.overlay.setAttribute("aria-busy", "false");
@@ -183,6 +204,7 @@ export class MatchManager {
     this.hud.exitMapButton.hidden = this.hasMatchTimer;
     this.hud.exitMapButton.textContent = this.hasMatchTimer ? "Exit Map" : "Exit Training Ground";
     this.hud.trainingNavigation.hidden = this.hasMatchTimer;
+    this.hud.returnToHubButton.hidden = true;
     this.setTrainingNavigationState("ready");
   }
 
@@ -209,6 +231,15 @@ export class MatchManager {
 
   private readonly handleMovementTraining = (): void => {
     void this.requestTrainingSection("movement-training");
+  };
+
+  private readonly handleReturnToHub = (): void => {
+    if (this.hasMatchTimer || this.matchState !== "playing" || this.isLoadingTrainingSection) {
+      return;
+    }
+
+    this.onTrainingHubRequested?.();
+    this.reportTrainingHubReturned();
   };
 
   private readonly handleDifficultyChange = (): void => {
@@ -250,6 +281,9 @@ export class MatchManager {
   };
 
   private enterWaitingState(): void {
+    if (!this.hasMatchTimer) {
+      this.onTrainingHubRequested?.();
+    }
     this.matchState = "waiting";
     this.playerKills = 0;
     this.botKills = 0;
@@ -265,12 +299,15 @@ export class MatchManager {
     this.hud.exitMapButton.hidden = true;
     this.hud.exitMapButton.textContent = this.hasMatchTimer ? "Exit Map" : "Exit Training Ground";
     this.hud.trainingNavigation.hidden = true;
+    this.hud.returnToHubButton.hidden = true;
     this.hud.scorePanel.hidden = !this.botEnabled;
     this.hud.botHealthCard.hidden = !this.botEnabled;
     this.hud.eyebrow.textContent = this.hasMatchTimer
       ? "Five-minute duel"
       : "Free practice";
-    this.hud.title.textContent = "Ready for the match?";
+    this.hud.title.textContent = this.hasMatchTimer
+      ? "Ready for the match?"
+      : "Ready for free practice?";
     this.hud.message.textContent = this.hasMatchTimer
       ? "Score more eliminations than the bot before the clock reaches zero."
       : "Explore and test your equipment with no opponent or countdown.";
@@ -454,7 +491,7 @@ export class MatchManager {
     }
   }
 
-  private async requestTrainingSection(sectionId: TrainingSectionId): Promise<void> {
+  private async requestTrainingSection(sectionId: TrainingGroundSectionId): Promise<void> {
     if (
       this.hasMatchTimer ||
       this.matchState !== "playing" ||
@@ -474,7 +511,8 @@ export class MatchManager {
       }
 
       await this.onTrainingSectionRequested(sectionId);
-      if (!this.isDisposed) {
+      if (!this.isDisposed && this.matchState === "playing") {
+        this.hud.returnToHubButton.hidden = false;
         this.setTrainingNavigationState("ready", sectionId);
       }
     } catch (error) {
@@ -491,7 +529,7 @@ export class MatchManager {
 
   private setTrainingNavigationState(
     state: "ready" | "loading" | "error",
-    detail?: TrainingSectionId | string,
+    detail?: TrainingGroundSectionId | string,
   ): void {
     const isLoading = state === "loading";
     this.hud.shootingRangeButton.disabled = isLoading;
@@ -499,7 +537,8 @@ export class MatchManager {
     this.hud.trainingNavigationStatus.dataset.state = state;
 
     if (state === "ready") {
-      this.hud.trainingNavigationStatus.textContent = "Choose a training section.";
+      this.hud.trainingNavigationStatus.textContent =
+        "Choose Shooting Range for aim practice or Movement Training for mobility practice.";
       return;
     }
 

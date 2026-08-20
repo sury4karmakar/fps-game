@@ -5,7 +5,7 @@ export interface AudioHudElements {
 
 type OscillatorShape = OscillatorType;
 
-export class AudioSystem {
+export class AudioSystem implements AudioSettingsPort, CombatAudioPort, MatchAudioPort, WeaponAudioPort {
   private context: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
@@ -115,6 +115,10 @@ export class AudioSystem {
         this.playTone(980, 1_180, 0.065, 0.05, "sine");
       });
     }
+  }
+
+  public playTrainingInteraction(): void {
+    this.playTone(510, 680, 0.06, 0.045, "sine");
   }
 
   public playFootstep(sprinting: boolean): void {
@@ -344,3 +348,9 @@ export class AudioSystem {
     }
   }
 }
+import type {
+  AudioSettingsPort,
+  CombatAudioPort,
+  MatchAudioPort,
+  WeaponAudioPort,
+} from "../core/contracts";

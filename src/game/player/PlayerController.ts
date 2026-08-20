@@ -5,6 +5,7 @@ import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
 import type { ArenaSpawnPoint } from "../arena/arenaTypes";
+import type { Disposable, PlayerControlPort, PlayerSettingsPort } from "../core/contracts";
 
 const WALK_SPEED = 0.40;
 const SPRINT_SPEED = 0.60;
@@ -32,7 +33,7 @@ const KEY_A = 65;
 const KEY_S = 83;
 const KEY_D = 68;
 
-export class PlayerController {
+export class PlayerController implements PlayerControlPort, PlayerSettingsPort {
   public readonly camera: FreeCamera;
 
   private readonly groundRay = new Ray(
@@ -47,6 +48,7 @@ export class PlayerController {
   );
   private readonly movementObserver: Observer<Scene>;
   private readonly lastFootstepPosition = Vector3.Zero();
+  private readonly dynamicCollisionMeshes = new Set<AbstractMesh>();
   private footstepDistance = 0;
   private currentEyeHeight = STANDING_EYE_HEIGHT;
   private isCrouchRequested = false;
@@ -151,6 +153,14 @@ export class PlayerController {
     this.footstepDistance = 0;
     this.lastFootstepPosition.copyFrom(this.camera.position);
     this.setEnabled(true);
+  }
+
+  /** Lets a lazy-loaded map section participate in ground and ceiling checks. */
+  public registerCollisionMeshes(meshes: readonly AbstractMesh[]): Disposable {
+    meshes.forEach((mesh) => this.dynamicCollisionMeshes.add(mesh));
+    return {
+      dispose: () => meshes.forEach((mesh) => this.dynamicCollisionMeshes.delete(mesh)),
+    };
   }
 
   public setMouseSensitivity(value: number): number {
@@ -365,7 +375,7 @@ export class PlayerController {
       STANDING_EYE_HEIGHT - this.currentEyeHeight + STANDING_COLLIDER_HEIGHT;
     const hit = this.scene.pickWithRay(
       this.ceilingRay,
-      (mesh) => this.collidableMeshes.includes(mesh),
+      (mesh) => this.isCollisionMesh(mesh),
       false,
     );
     return hit?.hit !== true;
@@ -416,7 +426,7 @@ export class PlayerController {
       (mesh) => {
         const metadata = mesh.metadata as { walkableSurface?: boolean } | null;
         return (
-          this.collidableMeshes.includes(mesh) && metadata?.walkableSurface === true
+          this.isCollisionMesh(mesh) && metadata?.walkableSurface === true
         );
       },
       false,
@@ -427,5 +437,9 @@ export class PlayerController {
     }
 
     return hit.pickedPoint.y + this.currentEyeHeight;
+  }
+
+  private isCollisionMesh(mesh: AbstractMesh): boolean {
+    return this.collidableMeshes.includes(mesh) || this.dynamicCollisionMeshes.has(mesh);
   }
 }

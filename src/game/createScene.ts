@@ -3,6 +3,8 @@ import type { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGener
 import { Scene } from "@babylonjs/core/scene.js";
 import { validateArenaBuildResult } from "./arena/arenaTypes";
 import { loadArenaBuilder } from "./arena/mapRegistry";
+import { TrainingGroundSectionController } from "./arena/trainingGround/sections/TrainingGroundSectionController";
+import { TrainingGroundInteractionController } from "./arena/trainingGround/interactions/TrainingGroundInteractionController";
 import { AudioSystem, type AudioHudElements } from "./audio/AudioSystem";
 import { BotAI } from "./bot/BotAI";
 import { CombatSystem, type CombatHudElements } from "./combat/CombatSystem";
@@ -12,6 +14,11 @@ import {
   isArenaMapAvailable,
   type MatchConfiguration,
 } from "./config/gameConfig";
+import type {
+  AudioSettingsPort,
+  MatchControlPort,
+  PlayerSettingsPort,
+} from "./core/contracts";
 import {
   MatchManager,
   type MatchHudElements,
@@ -22,13 +29,11 @@ import { WeaponSystem, type WeaponHudElements } from "./weapon/WeaponSystem";
 
 export interface SceneBuildResult {
   readonly scene: Scene;
-  readonly audioSystem: AudioSystem;
-  readonly playerController: PlayerController;
-  readonly combatSystem: CombatSystem;
-  readonly botAI: BotAI;
-  readonly weaponSystem: WeaponSystem;
-  readonly matchManager: MatchManager;
+  readonly audioSettings: AudioSettingsPort;
+  readonly playerSettings: PlayerSettingsPort;
+  readonly match: MatchControlPort;
   readonly shadowGenerator: ShadowGenerator;
+  dispose(): void;
 }
 
 export async function createScene(
@@ -58,6 +63,8 @@ export async function createScene(
   let matchManager: MatchManager | null = null;
   let weaponSystem: WeaponSystem | null = null;
   let botAI: BotAI | null = null;
+  let trainingSections: TrainingGroundSectionController | null = null;
+  let trainingInteractions: TrainingGroundInteractionController | null = null;
 
   try {
     const arena = await createArena(scene);
@@ -99,16 +106,47 @@ export async function createScene(
     const initializedPlayerController = playerController;
     const initializedCombatSystem = combatSystem;
     const initializedBotAI = botAI;
+    trainingInteractions = matchConfiguration.selectedMapId === "training-ground"
+      ? new TrainingGroundInteractionController(scene, initializedPlayerController.camera)
+      : null;
     weaponSystem = new WeaponSystem(
       scene,
       canvas,
       initializedPlayerController.camera,
       arena.collidableMeshes,
       weaponHud,
-      (mesh, damage) => initializedCombatSystem.applyWeaponHit(mesh, damage),
+      (mesh, damage) => {
+        const trainingHit = trainingInteractions?.activateShot(mesh, damage);
+        if (trainingHit) {
+          return { ...trainingHit, handled: true };
+        }
+        return initializedCombatSystem.applyWeaponHit(mesh, damage);
+      },
       () => initializedBotAI.notifyPlayerShot(initializedPlayerController.camera.position),
       audioSystem,
+      (mesh) => trainingInteractions?.isShotTarget(mesh) ?? false,
     );
+    trainingSections = matchConfiguration.selectedMapId === "training-ground"
+      ? new TrainingGroundSectionController(
+        scene,
+        initializedPlayerController,
+        weaponSystem,
+        arena.spawnPoints.player,
+        trainingInteractions!,
+        matchHud.trainingRangeStatus,
+        (meshes) => {
+          const playerRegistration = initializedPlayerController.registerCollisionMeshes(meshes);
+          const weaponRegistration = weaponSystem?.registerCollisionMeshes(meshes);
+          return {
+            dispose: () => {
+              playerRegistration.dispose();
+              weaponRegistration?.dispose();
+            },
+          };
+        },
+        () => matchManager?.reportTrainingHubReturned(),
+      )
+      : null;
     matchManager = new MatchManager(
       scene,
       playerController,
@@ -122,20 +160,43 @@ export async function createScene(
       onMatchStartRequested,
       selectedMap.hasBot,
       selectedMap.hasMatchTimer,
+      trainingSections
+        ? (sectionId) => trainingSections?.activate(sectionId)
+        : undefined,
+      trainingSections ? () => trainingSections?.returnToHub() : undefined,
     );
 
-    return {
+    const runtime: SceneBuildResult = {
       scene,
-      audioSystem,
-      playerController,
-      combatSystem,
-      botAI,
-      weaponSystem,
-      matchManager,
+      audioSettings: audioSystem,
+      playerSettings: playerController,
+      match: matchManager,
       shadowGenerator: arena.shadowGenerator,
+      dispose: () => {
+        matchManager?.dispose();
+        trainingSections?.dispose();
+        trainingInteractions?.dispose();
+        weaponSystem?.dispose();
+        botAI?.dispose();
+        combatSystem?.dispose();
+        playerController?.dispose();
+        audioSystem?.dispose();
+        scene.dispose();
+        matchManager = null;
+        weaponSystem = null;
+        botAI = null;
+        trainingSections = null;
+        trainingInteractions = null;
+        combatSystem = null;
+        playerController = null;
+        audioSystem = null;
+      },
     };
+    return runtime;
   } catch (error) {
     matchManager?.dispose();
+    trainingSections?.dispose();
+    trainingInteractions?.dispose();
     weaponSystem?.dispose();
     botAI?.dispose();
     combatSystem?.dispose();

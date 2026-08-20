@@ -1,16 +1,8 @@
 import type { FreeCamera } from "@babylonjs/core/Cameras/freeCamera.js";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
-import { Color3 } from "@babylonjs/core/Maths/math.color.js";
-import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh.js";
-import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.pure.js";
-import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.pure.js";
-import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.pure.js";
-import type { Mesh } from "@babylonjs/core/Meshes/mesh.js";
-import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import type { Observer } from "@babylonjs/core/Misc/observable.js";
 import type { Scene } from "@babylonjs/core/scene.js";
-import type { AudioSystem } from "../audio/AudioSystem";
 import { isArenaCollisionMesh } from "../arena/arenaTypes";
 import {
   DEFAULT_WEAPON_ID,
@@ -18,6 +10,15 @@ import {
   type WeaponDefinition,
   type WeaponId,
 } from "../config/gameConfig";
+import type {
+  Disposable,
+  TrainingAmmoRefillResult,
+  TrainingWeaponControlPort,
+  WeaponAudioPort,
+  WeaponControlPort,
+} from "../core/contracts";
+import { WeaponImpactEffects } from "../entities/weapon/WeaponImpactEffects";
+import { WeaponView } from "../entities/weapon/WeaponView";
 import "@babylonjs/core/Shaders/default.fragment.js";
 import "@babylonjs/core/Shaders/default.vertex.js";
 
@@ -30,12 +31,6 @@ const RECOIL_RECOVERY_PER_SECOND = 0.055;
 const MUZZLE_FLASH_DURATION_MS = 45;
 const HIT_MARKER_DURATION_MS = 110;
 const WEAPON_SWITCH_DURATION_MS = 320;
-const IMPACT_LIFETIME_MS = 360;
-const SPARK_LIFETIME_MS = 460;
-const MAX_IMPACTS = 36;
-const MAX_DECALS = 20;
-const DECAL_LIFETIME_MS = 7_000;
-const MIN_DECAL_SPACING = 0.14;
 const DEFAULT_FIELD_OF_VIEW = 0.8;
 const ADS_TRANSITION_PER_SECOND = 9;
 
@@ -47,6 +42,7 @@ export interface WeaponHudElements {
   readonly ammoCount: HTMLElement;
   readonly reloadStatus: HTMLElement;
   readonly hitMarker: HTMLElement;
+  readonly trainingFeedback: HTMLElement;
 }
 
 export interface WeaponDamageResult {
@@ -59,40 +55,12 @@ interface WeaponAmmoState {
   reserveAmmo: number;
 }
 
-interface WeaponModel {
-  readonly root: TransformNode;
-  readonly magazine: Mesh;
-  readonly muzzleFlash: Mesh;
-}
-
-interface ImpactEffect {
-  readonly mesh: Mesh;
-  readonly createdAt: number;
-}
-
-interface ImpactParticle {
-  readonly mesh: Mesh;
-  readonly velocity: Vector3;
-  readonly createdAt: number;
-}
-
-interface ImpactDecal {
-  readonly mesh: Mesh;
-  readonly sourceMesh: AbstractMesh;
-  readonly position: Vector3;
-  readonly createdAt: number;
-}
-
-export class WeaponSystem {
-  private readonly impactMaterial: StandardMaterial;
-  private readonly decalMaterial: StandardMaterial;
-  private readonly impacts: ImpactEffect[] = [];
-  private readonly impactParticles: ImpactParticle[] = [];
-  private readonly decals: ImpactDecal[] = [];
-  private readonly models: Readonly<Record<WeaponId, WeaponModel>>;
+export class WeaponSystem implements WeaponControlPort, TrainingWeaponControlPort {
+  private readonly impactEffects: WeaponImpactEffects;
+  private readonly models: Readonly<Record<WeaponId, WeaponView>>;
   private readonly ammoByWeapon: Record<WeaponId, WeaponAmmoState>;
   private readonly updateObserver: Observer<Scene>;
-  private readonly arenaCollisionMeshes: ReadonlySet<AbstractMesh>;
+  private readonly arenaCollisionMeshes: Set<AbstractMesh>;
 
   private equippedWeaponId: WeaponId = DEFAULT_WEAPON_ID;
   private isEnabled = true;
@@ -106,6 +74,8 @@ export class WeaponSystem {
   private switchStartedAt = 0;
   private switchTargetId: WeaponId | null = null;
   private weaponKick = 0;
+  private trainingInventoryEnabled = false;
+  private trainingWeaponId: WeaponId | null = null;
   private hitMarkerTimeout: number | null = null;
   private muzzleFlashTimeout: number | null = null;
   private fireFeedbackTimeout: number | null = null;
@@ -119,19 +89,19 @@ export class WeaponSystem {
     private readonly resolveDamageHit: (
       mesh: AbstractMesh,
       damage: number,
-    ) => WeaponDamageResult,
+    ) => WeaponDamageResult & { readonly handled?: boolean },
     private readonly notifyWeaponFired: () => void,
-    private readonly audioSystem: AudioSystem,
+    private readonly audioSystem: WeaponAudioPort,
+    private readonly isInteractionTarget: (mesh: AbstractMesh) => boolean = () => false,
   ) {
     this.arenaCollisionMeshes = new Set(collidableMeshes);
     this.models = {
-      "assault-rifle": this.createWeaponModel("assault-rifle"),
-      scattergun: this.createWeaponModel("scattergun"),
-      "marksman-rifle": this.createWeaponModel("marksman-rifle"),
+      "assault-rifle": new WeaponView(scene, "assault-rifle", { parent: camera, namePrefix: "player", renderingGroupId: 1 }),
+      scattergun: new WeaponView(scene, "scattergun", { parent: camera, namePrefix: "player", renderingGroupId: 1 }),
+      "marksman-rifle": new WeaponView(scene, "marksman-rifle", { parent: camera, namePrefix: "player", renderingGroupId: 1 }),
     };
     this.ammoByWeapon = this.createStartingAmmo();
-    this.impactMaterial = this.createImpactMaterial();
-    this.decalMaterial = this.createDecalMaterial();
+    this.impactEffects = new WeaponImpactEffects(scene);
     this.updateObserver = scene.onAfterAnimationsObservable.add(() => this.update());
 
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
@@ -163,12 +133,8 @@ export class WeaponSystem {
     if (this.hitMarkerTimeout !== null) window.clearTimeout(this.hitMarkerTimeout);
     if (this.muzzleFlashTimeout !== null) window.clearTimeout(this.muzzleFlashTimeout);
     if (this.fireFeedbackTimeout !== null) window.clearTimeout(this.fireFeedbackTimeout);
-    this.impacts.forEach(({ mesh }) => mesh.dispose());
-    this.impactParticles.forEach(({ mesh }) => mesh.dispose());
-    this.decals.forEach(({ mesh }) => mesh.dispose());
-    Object.values(this.models).forEach(({ root }) => root.dispose(false, true));
-    this.impactMaterial.dispose();
-    this.decalMaterial.dispose();
+    this.impactEffects.dispose();
+    Object.values(this.models).forEach((model) => model.dispose());
   }
 
   public setEnabled(enabled: boolean): void {
@@ -184,6 +150,8 @@ export class WeaponSystem {
   }
 
   public resetForMatch(): void {
+    this.trainingInventoryEnabled = false;
+    this.trainingWeaponId = null;
     this.equippedWeaponId = DEFAULT_WEAPON_ID;
     this.isReloading = false;
     this.isTriggerHeld = false;
@@ -197,17 +165,93 @@ export class WeaponSystem {
     this.switchStartedAt = 0;
     this.switchTargetId = null;
     Object.assign(this.ammoByWeapon, this.createStartingAmmo());
-    this.impacts.forEach(({ mesh }) => mesh.dispose());
-    this.impactParticles.forEach(({ mesh }) => mesh.dispose());
-    this.decals.forEach(({ mesh }) => mesh.dispose());
-    this.impacts.length = 0;
-    this.impactParticles.length = 0;
-    this.decals.length = 0;
+    this.impactEffects.clear();
     this.hud.hitMarker.classList.remove("is-visible", "is-elimination");
     this.hud.crosshair.classList.remove("is-firing");
     this.updateWeaponVisibility();
     this.updateHud();
     this.showFireFeedback();
+    this.hideTrainingFeedback();
+  }
+
+  public get hasTrainingWeapon(): boolean {
+    return this.trainingInventoryEnabled && this.trainingWeaponId !== null;
+  }
+
+  /** Limits Training Ground to one station-selected weapon at a time. */
+  public setTrainingInventoryEnabled(enabled: boolean): void {
+    if (enabled === this.trainingInventoryEnabled) return;
+
+    this.trainingInventoryEnabled = enabled;
+    this.trainingWeaponId = null;
+    this.cancelReload();
+    this.isTriggerHeld = false;
+    this.isAiming = false;
+    this.switchTargetId = null;
+    this.switchStartedAt = 0;
+    this.equippedWeaponId = DEFAULT_WEAPON_ID;
+    this.updateWeaponVisibility();
+    this.updateHud();
+    if (enabled) {
+      this.showTrainingFeedback("Collect one weapon from a Shooting Range station.");
+    } else {
+      this.hideTrainingFeedback();
+    }
+  }
+
+  public equipTrainingWeapon(weaponId: WeaponId): void {
+    if (!this.trainingInventoryEnabled) return;
+
+    const definition = WEAPON_DEFINITIONS[weaponId];
+    const wasReplacement = this.trainingWeaponId !== null;
+    this.trainingWeaponId = weaponId;
+    this.equippedWeaponId = weaponId;
+    this.ammoByWeapon[weaponId].ammoInMagazine = definition.magazineCapacity;
+    this.ammoByWeapon[weaponId].reserveAmmo = definition.startingReserveAmmo;
+    this.cancelReload();
+    this.isTriggerHeld = false;
+    this.isAiming = false;
+    this.switchTargetId = null;
+    this.switchStartedAt = 0;
+    this.updateWeaponVisibility();
+    this.updateHud();
+    this.showTrainingFeedback(
+      wasReplacement
+        ? `${definition.displayName} equipped — previous training weapon replaced.`
+        : `${definition.displayName} equipped for training.`,
+    );
+    this.audioSystem.playTrainingInteraction();
+  }
+
+  public refillTrainingWeapon(): TrainingAmmoRefillResult {
+    if (!this.trainingInventoryEnabled || !this.trainingWeaponId) {
+      this.showTrainingFeedback("Collect a weapon before using the ammunition station.");
+      if (this.trainingInventoryEnabled) this.audioSystem.playTrainingInteraction();
+      return { status: "no-weapon", added: 0 };
+    }
+
+    this.audioSystem.playTrainingInteraction();
+    const weaponId = this.trainingWeaponId;
+    const definition = WEAPON_DEFINITIONS[weaponId];
+    const ammo = this.ammoByWeapon[weaponId];
+    const totalAmmo = ammo.ammoInMagazine + ammo.reserveAmmo;
+    const added = Math.max(0, definition.maxTotalAmmo - totalAmmo);
+
+    if (added === 0) {
+      this.showTrainingFeedback(`${definition.displayName} ammunition is already full.`);
+      return { status: "full", added: 0 };
+    }
+
+    ammo.reserveAmmo += added;
+    this.updateHud();
+    this.showTrainingFeedback(`${definition.displayName} ammunition refilled (+${added}).`);
+    return { status: "refilled", added };
+  }
+
+  public showTrainingWeaponRequired(): void {
+    if (this.trainingInventoryEnabled && !this.trainingWeaponId) {
+      this.showTrainingFeedback("Collect a weapon before starting training.");
+    }
   }
 
   /** Splits a pickup evenly so no one weapon becomes the only viable choice. */
@@ -226,6 +270,14 @@ export class WeaponSystem {
     }
     this.updateHud();
     return added;
+  }
+
+  /** Lets a lazy-loaded map section receive impact effects on its collision geometry. */
+  public registerCollisionMeshes(meshes: readonly AbstractMesh[]): Disposable {
+    meshes.forEach((mesh) => this.arenaCollisionMeshes.add(mesh));
+    return {
+      dispose: () => meshes.forEach((mesh) => this.arenaCollisionMeshes.delete(mesh)),
+    };
   }
 
   private get definition(): WeaponDefinition {
@@ -281,6 +333,7 @@ export class WeaponSystem {
       this.startReload(performance.now());
       return;
     }
+    if (this.trainingInventoryEnabled) return;
     const slot = Number(event.key);
     if (slot >= 1 && slot <= WEAPON_IDS.length) {
       event.preventDefault();
@@ -290,6 +343,7 @@ export class WeaponSystem {
 
   private readonly handleWheel = (event: WheelEvent): void => {
     if (!this.isEnabled || document.pointerLockElement !== this.canvas || event.deltaY === 0) return;
+    if (this.trainingInventoryEnabled) return;
     event.preventDefault();
     const current = WEAPON_IDS.indexOf(this.equippedWeaponId);
     const offset = event.deltaY > 0 ? 1 : -1;
@@ -313,7 +367,7 @@ export class WeaponSystem {
     if (this.isEnabled && !this.isSwitching && this.isTriggerHeld && this.definition.fireMode === "automatic" && document.pointerLockElement === this.canvas) this.tryFire(now);
     this.updateAim(deltaSeconds);
     this.updateWeaponTransform(deltaSeconds, now);
-    this.updateImpacts(now, deltaSeconds);
+    this.impactEffects.update(now, deltaSeconds);
   }
 
   private equipWeapon(weaponId: WeaponId): void {
@@ -350,6 +404,10 @@ export class WeaponSystem {
 
   private tryFire(now: number): void {
     if (!this.isEnabled || this.isReloading || this.isSwitching || now < this.nextShotAt) return;
+    if (this.trainingInventoryEnabled && !this.trainingWeaponId) {
+      this.fireTrainingInteraction(now);
+      return;
+    }
     if (this.ammo.ammoInMagazine === 0) { this.startReload(now); return; }
     this.ammo.ammoInMagazine -= 1;
     this.nextShotAt = now + this.definition.fireIntervalMs;
@@ -362,6 +420,16 @@ export class WeaponSystem {
     this.applyRecoil();
   }
 
+  /** Allows the Start box to explain the missing weapon without firing combat shots. */
+  private fireTrainingInteraction(now: number): void {
+    this.nextShotAt = now + 140;
+    const ray = this.camera.getForwardRay(WEAPON_DEFINITIONS[DEFAULT_WEAPON_ID].range);
+    const hit = this.scene.pickWithRay(ray, this.isHitscanTarget, false);
+    if (hit?.hit && hit.pickedMesh && this.isInteractionTarget(hit.pickedMesh)) {
+      this.resolveDamageHit(hit.pickedMesh, 0);
+    }
+  }
+
   private fireHitscan(): void {
     const definition = this.definition;
     for (let pellet = 0; pellet < definition.projectilesPerShot; pellet += 1) {
@@ -370,12 +438,18 @@ export class WeaponSystem {
       const hit = this.scene.pickWithRay(ray, this.isHitscanTarget, false);
       if (!hit?.hit || !hit.pickedPoint || !hit.pickedMesh) continue;
       const normal = hit.getNormal(true) ?? ray.direction.scale(-1);
-      this.createImpact(hit.pickedPoint, normal, hit.pickedMesh);
+      this.impactEffects.add(
+        hit.pickedPoint,
+        normal,
+        hit.pickedMesh,
+        this.arenaCollisionMeshes.has(hit.pickedMesh) &&
+          isArenaCollisionMesh(hit.pickedMesh),
+      );
       const result = this.resolveDamageHit(hit.pickedMesh, definition.damagePerProjectile);
       if (result.damageApplied) {
         this.showHitMarker(result.eliminated);
         this.audioSystem.playHitConfirmation(result.eliminated);
-      } else {
+      } else if (!result.handled) {
         this.audioSystem.playImpact();
       }
     }
@@ -487,8 +561,10 @@ export class WeaponSystem {
   }
 
   private updateWeaponVisibility(): void {
-    for (const [weaponId, model] of Object.entries(this.models) as [WeaponId, WeaponModel][]) {
-      const selected = weaponId === this.equippedWeaponId;
+    for (const [weaponId, model] of Object.entries(this.models) as [WeaponId, WeaponView][]) {
+      const selected = this.trainingInventoryEnabled
+        ? weaponId === this.trainingWeaponId
+        : weaponId === this.equippedWeaponId;
       model.root.setEnabled(selected);
       model.muzzleFlash.setEnabled(false);
     }
@@ -524,102 +600,24 @@ export class WeaponSystem {
     }, HIT_MARKER_DURATION_MS);
   }
 
-  private createImpact(
-    position: Vector3,
-    normal: Vector3,
-    sourceMesh: AbstractMesh,
-  ): void {
-    const createdAt = performance.now();
-    const impact = CreateSphere(`weapon-impact-${createdAt}`, { diameter: 0.075, segments: 6 }, this.scene);
-    impact.position.copyFrom(position.add(normal.scale(0.025)));
-    impact.material = this.impactMaterial;
-    impact.isPickable = false;
-    impact.renderingGroupId = 1;
-    this.impacts.push({ mesh: impact, createdAt });
-    if (this.arenaCollisionMeshes.has(sourceMesh) && isArenaCollisionMesh(sourceMesh)) {
-      this.createImpactDecal(position, normal, sourceMesh, createdAt);
-    }
-    for (let index = 0; index < 2; index += 1) {
-      const spark = CreateBox(`weapon-spark-${createdAt}-${index}`, { size: 0.035 }, this.scene);
-      spark.position.copyFrom(impact.position);
-      spark.material = this.impactMaterial;
-      spark.isPickable = false;
-      spark.renderingGroupId = 1;
-      this.impactParticles.push({ mesh: spark, velocity: normal.scale(1.7 + Math.random() * 1.5).add(new Vector3(Math.random() - 0.5, Math.random(), Math.random() - 0.5)), createdAt });
-    }
-    while (this.impacts.length > MAX_IMPACTS) this.impacts.shift()?.mesh.dispose();
-  }
-
-  private updateImpacts(now: number, deltaSeconds: number): void {
-    for (let index = this.impacts.length - 1; index >= 0; index -= 1) {
-      const effect = this.impacts[index]!;
-      const progress = (now - effect.createdAt) / IMPACT_LIFETIME_MS;
-      if (progress >= 1) { effect.mesh.dispose(); this.impacts.splice(index, 1); continue; }
-      effect.mesh.scaling.setAll(1 + progress * 2.4);
-      effect.mesh.visibility = 1 - progress;
-    }
-    for (let index = this.impactParticles.length - 1; index >= 0; index -= 1) {
-      const particle = this.impactParticles[index]!;
-      const progress = (now - particle.createdAt) / SPARK_LIFETIME_MS;
-      if (progress >= 1) { particle.mesh.dispose(); this.impactParticles.splice(index, 1); continue; }
-      particle.velocity.y -= 5.2 * deltaSeconds;
-      particle.mesh.position.addInPlace(particle.velocity.scale(deltaSeconds));
-      particle.mesh.visibility = 1 - progress;
-    }
-    for (let index = this.decals.length - 1; index >= 0; index -= 1) {
-      const decal = this.decals[index]!;
-      const progress = (now - decal.createdAt) / DECAL_LIFETIME_MS;
-      if (progress >= 1) {
-        decal.mesh.dispose();
-        this.decals.splice(index, 1);
-        continue;
-      }
-      decal.mesh.visibility = progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4;
-    }
-  }
-
-  private createImpactDecal(
-    position: Vector3,
-    normal: Vector3,
-    sourceMesh: AbstractMesh,
-    createdAt: number,
-  ): void {
-    const surfaceNormal = normal.normalizeToNew();
-    const overlapsExistingDecal = this.decals.some(
-      (decal) =>
-        decal.sourceMesh === sourceMesh &&
-        Vector3.DistanceSquared(decal.position, position) < MIN_DECAL_SPACING * MIN_DECAL_SPACING,
-    );
-    if (overlapsExistingDecal) return;
-
-    const decal = CreateCylinder(
-      `weapon-decal-${createdAt}`,
-      { diameter: 0.075 + Math.random() * 0.015, height: 0.008, tessellation: 16 },
-      this.scene,
-    );
-    decal.position.copyFrom(position.add(surfaceNormal.scale(0.004)));
-    decal.rotationQuaternion = Quaternion.Identity();
-    Quaternion.FromUnitVectorsToRef(Vector3.Up(), surfaceNormal, decal.rotationQuaternion);
-    decal.material = this.decalMaterial;
-    decal.isPickable = false;
-    decal.checkCollisions = false;
-    decal.receiveShadows = false;
-    // World group keeps scene depth occlusion, so marks cannot show through cover.
-    decal.renderingGroupId = 0;
-    this.decals.push({ mesh: decal, sourceMesh, position: position.clone(), createdAt });
-    while (this.decals.length > MAX_DECALS) this.decals.shift()?.mesh.dispose();
-  }
-
   private readonly isHitscanTarget = (mesh: AbstractMesh): boolean => {
     if (this.arenaCollisionMeshes.has(mesh) && isArenaCollisionMesh(mesh)) {
       return true;
     }
 
     const metadata = mesh.metadata as { combatantId?: string } | null;
-    return metadata?.combatantId === "bot";
+    return metadata?.combatantId === "bot" || this.isInteractionTarget(mesh);
   };
 
   private updateHud(): void {
+    if (this.trainingInventoryEnabled && !this.trainingWeaponId) {
+      this.hud.weaponName.textContent = "No Training Weapon";
+      this.hud.weaponRole.textContent = "Collect one weapon from a Shooting Range station.";
+      this.hud.weaponSlots.innerHTML = "<span class=\"weapon-slot\">Training inventory: empty</span>";
+      this.hud.ammoCount.textContent = "-- / --";
+      this.hud.reloadStatus.hidden = true;
+      return;
+    }
     const definition = this.definition;
     this.hud.weaponName.textContent = definition.displayName;
     this.hud.weaponRole.textContent = definition.role;
@@ -634,6 +632,16 @@ export class WeaponSystem {
     this.hud.reloadStatus.hidden = !this.isReloading && !this.isSwitching;
   }
 
+  private showTrainingFeedback(message: string): void {
+    this.hud.trainingFeedback.textContent = message;
+    this.hud.trainingFeedback.hidden = false;
+  }
+
+  private hideTrainingFeedback(): void {
+    this.hud.trainingFeedback.hidden = true;
+    this.hud.trainingFeedback.textContent = "";
+  }
+
   private createStartingAmmo(): Record<WeaponId, WeaponAmmoState> {
     return Object.fromEntries(WEAPON_IDS.map((weaponId) => {
       const weapon = WEAPON_DEFINITIONS[weaponId];
@@ -645,49 +653,4 @@ export class WeaponSystem {
     return start + (end - start) * amount;
   }
 
-  private createWeaponModel(weaponId: WeaponId): WeaponModel {
-    const root = new TransformNode(`player-${weaponId}-root`, this.scene);
-    root.parent = this.camera;
-    const colors: Record<WeaponId, Color3> = {
-      "assault-rifle": new Color3(0.08, 0.13, 0.17),
-      scattergun: new Color3(0.21, 0.1, 0.055),
-      "marksman-rifle": new Color3(0.08, 0.19, 0.14),
-    };
-    const material = new StandardMaterial(`player-${weaponId}-material`, this.scene);
-    material.diffuseColor = colors[weaponId];
-    material.specularColor = new Color3(0.38, 0.42, 0.45);
-    const muzzleMaterial = new StandardMaterial(`player-${weaponId}-muzzle`, this.scene);
-    muzzleMaterial.disableLighting = true;
-    muzzleMaterial.emissiveColor = weaponId === "scattergun" ? new Color3(1, 0.32, 0.06) : new Color3(1, 0.55, 0.09);
-    const attach = (mesh: Mesh): Mesh => { mesh.parent = root; mesh.material = material; mesh.isPickable = false; mesh.renderingGroupId = 1; return mesh; };
-    const isScattergun = weaponId === "scattergun";
-    const isMarksman = weaponId === "marksman-rifle";
-    const body = attach(CreateBox(`player-${weaponId}-body`, { width: isScattergun ? 0.25 : 0.18, height: 0.16, depth: isMarksman ? 0.72 : 0.58 }, this.scene));
-    body.position.z = 0.12;
-    const magazine = attach(CreateBox(`player-${weaponId}-magazine`, { width: 0.12, height: isScattergun ? 0.2 : 0.28, depth: 0.14 }, this.scene));
-    magazine.position.set(0, -0.2, 0.08);
-    const barrel = attach(CreateCylinder(`player-${weaponId}-barrel`, { height: isScattergun ? 0.7 : isMarksman ? 0.82 : 0.42, diameter: isScattergun ? 0.075 : 0.045, tessellation: 12 }, this.scene));
-    barrel.rotation.x = Math.PI / 2;
-    barrel.position.z = isScattergun ? 0.76 : isMarksman ? 0.94 : 0.84;
-    if (isMarksman) { const scope = attach(CreateCylinder(`player-${weaponId}-scope`, { height: 0.3, diameter: 0.09, tessellation: 12 }, this.scene)); scope.rotation.x = Math.PI / 2; scope.position.set(0, 0.13, 0.34); }
-    const muzzleFlash = CreateSphere(`player-${weaponId}-muzzle-flash`, { diameter: isScattergun ? 0.2 : 0.13, segments: 6 }, this.scene);
-    muzzleFlash.parent = root; muzzleFlash.material = muzzleMaterial; muzzleFlash.isPickable = false; muzzleFlash.renderingGroupId = 1; muzzleFlash.position.z = isScattergun ? 1.14 : isMarksman ? 1.38 : 1.07; muzzleFlash.setEnabled(false);
-    return { root, magazine, muzzleFlash };
-  }
-
-  private createImpactMaterial(): StandardMaterial {
-    const material = new StandardMaterial("weapon-impact-material", this.scene);
-    material.disableLighting = true;
-    material.emissiveColor = new Color3(1, 0.58, 0.12);
-    return material;
-  }
-
-  private createDecalMaterial(): StandardMaterial {
-    const material = new StandardMaterial("weapon-decal-material", this.scene);
-    material.diffuseColor = new Color3(0.018, 0.014, 0.012);
-    material.emissiveColor = new Color3(0.01, 0.006, 0.003);
-    material.specularColor = Color3.Black();
-    material.alpha = 0.82;
-    return material;
-  }
 }
