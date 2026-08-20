@@ -59,6 +59,10 @@ export class HitscanBotAttackBehavior implements BotAttackBehavior {
 
   public attack(request: BotAttackRequest): void {
     const { playerPosition, distanceToPlayer, now, difficulty } = request;
+    if (!this.combat.consumeBotAmmo()) {
+      this.nextShotAt = now + 250;
+      return;
+    }
     const origin = this.combat.getBotMuzzlePosition();
     const target = playerPosition.subtract(new Vector3(0, 0.12, 0));
     const idealDirection = target.subtract(origin).normalize();
@@ -91,7 +95,7 @@ export class HitscanBotAttackBehavior implements BotAttackBehavior {
       Vector3.DistanceSquared(closestPoint, target) <=
       PLAYER_HIT_RADIUS * PLAYER_HIT_RADIUS
     ) {
-      this.combat.damagePlayer(BOT_WEAPON_DAMAGE);
+      this.combat.damageTarget(BOT_WEAPON_DAMAGE);
     }
   }
 

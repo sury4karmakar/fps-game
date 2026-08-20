@@ -8,6 +8,7 @@ import { TrainingGroundInteractionController } from "./arena/trainingGround/inte
 import { AudioSystem, type AudioHudElements } from "./audio/AudioSystem";
 import { BotAI } from "./bot/BotAI";
 import { CombatSystem, type CombatHudElements } from "./combat/CombatSystem";
+import { TeamCombatSystem } from "./combat/TeamCombatSystem";
 import {
   DEFAULT_MATCH_CONFIGURATION,
   getArenaMapDefinition,
@@ -16,6 +17,8 @@ import {
 } from "./config/gameConfig";
 import type {
   AudioSettingsPort,
+  BotControlPort,
+  MatchCombatPort,
   MatchControlPort,
   PlayerSettingsPort,
 } from "./core/contracts";
@@ -59,10 +62,11 @@ export async function createScene(
   const scene = new Scene(engine);
   let audioSystem: AudioSystem | null = null;
   let playerController: PlayerController | null = null;
-  let combatSystem: CombatSystem | null = null;
+  let combatSystem: (CombatSystem & MatchCombatPort) | TeamCombatSystem | null = null;
   let matchManager: MatchManager | null = null;
   let weaponSystem: WeaponSystem | null = null;
   let botAI: BotAI | null = null;
+  let teamCombat: TeamCombatSystem | null = null;
   let trainingSections: TrainingGroundSectionController | null = null;
   let trainingInteractions: TrainingGroundInteractionController | null = null;
 
@@ -81,31 +85,49 @@ export async function createScene(
       arena.collidableMeshes,
       (sprinting) => audioSystem?.playFootstep(sprinting),
     );
-    combatSystem = new CombatSystem(
-      scene,
-      playerController,
-      arena.respawnPoints,
-      arena.collidableMeshes,
-      combatHud,
-      (killer) => matchManager?.recordKill(killer),
-      (amount) => weaponSystem?.addAmmo(amount) ?? 0,
-      audioSystem,
-      selectedMap.hasBot,
-      selectedMap.hasArmorPickups,
-    );
-    botAI = new BotAI(
-      scene,
-      playerController,
-      combatSystem,
-      arena.botPatrolPoints,
-      arena.botNavigationPoints,
-      arena.botCoverPoints,
-      arena.collidableMeshes,
-      matchConfiguration.botDifficultyId,
-    );
+    if (matchConfiguration.selectedMapId === "foundry") {
+      teamCombat = new TeamCombatSystem(
+        scene,
+        playerController,
+        arena.respawnPoints,
+        arena.botPatrolPoints,
+        arena.botNavigationPoints,
+        arena.botCoverPoints,
+        arena.collidableMeshes,
+        combatHud,
+        (team) => matchManager?.recordKill(team === "blue" ? "player" : "bot"),
+        (amount) => weaponSystem?.addAmmo(amount) ?? 0,
+        audioSystem,
+      );
+      teamCombat.setDifficulty(matchConfiguration.botDifficultyId);
+      combatSystem = teamCombat;
+    } else {
+      combatSystem = new CombatSystem(
+        scene,
+        playerController,
+        arena.respawnPoints,
+        arena.collidableMeshes,
+        combatHud,
+        (killer) => matchManager?.recordKill(killer),
+        (amount) => weaponSystem?.addAmmo(amount) ?? 0,
+        audioSystem,
+        selectedMap.hasBot,
+        selectedMap.hasArmorPickups,
+      );
+      botAI = new BotAI(
+        scene,
+        playerController,
+        combatSystem,
+        arena.botPatrolPoints,
+        arena.botNavigationPoints,
+        arena.botCoverPoints,
+        arena.collidableMeshes,
+        matchConfiguration.botDifficultyId,
+      );
+    }
     const initializedPlayerController = playerController;
     const initializedCombatSystem = combatSystem;
-    const initializedBotAI = botAI;
+    const botControl: BotControlPort = teamCombat ?? botAI!;
     trainingInteractions = matchConfiguration.selectedMapId === "training-ground"
       ? new TrainingGroundInteractionController(scene, initializedPlayerController.camera)
       : null;
@@ -122,7 +144,10 @@ export async function createScene(
         }
         return initializedCombatSystem.applyWeaponHit(mesh, damage);
       },
-      () => initializedBotAI.notifyPlayerShot(initializedPlayerController.camera.position),
+      () => {
+        botAI?.notifyPlayerShot(initializedPlayerController.camera.position);
+        teamCombat?.notifyPlayerWeaponFired(initializedPlayerController.camera.position);
+      },
       audioSystem,
       (mesh) => trainingInteractions?.isShotTarget(mesh) ?? false,
     );
@@ -151,7 +176,7 @@ export async function createScene(
       scene,
       playerController,
       combatSystem,
-      botAI,
+      botControl,
       weaponSystem,
       audioSystem,
       matchHud,
@@ -185,6 +210,7 @@ export async function createScene(
         matchManager = null;
         weaponSystem = null;
         botAI = null;
+        teamCombat = null;
         trainingSections = null;
         trainingInteractions = null;
         combatSystem = null;

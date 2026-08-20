@@ -17,7 +17,7 @@ export const BOT_EYE_HEIGHT = 1.62;
 export type BotHitZone = "body" | "head";
 
 export interface BotDamageMetadata {
-  readonly combatantId: "bot";
+  readonly combatantId: string;
   readonly hitZone: BotHitZone;
 }
 
@@ -27,6 +27,8 @@ export interface BotViewOptions {
   readonly position?: Vector3;
   readonly facingTarget?: Vector3;
   readonly damageable?: boolean;
+  /** Optional combat identity for multi-bot maps; defaults to the legacy bot. */
+  readonly combatantId?: string;
   readonly collisionEnabled?: boolean;
   readonly shadowGenerator?: ShadowGenerator;
 }
@@ -92,7 +94,7 @@ export class BotView {
       mesh.checkCollisions = false;
       mesh.receiveShadows = true;
       mesh.metadata = damageable
-        ? ({ combatantId: "bot", hitZone } satisfies BotDamageMetadata)
+        ? ({ combatantId: options.combatantId ?? "bot", hitZone } satisfies BotDamageMetadata)
         : null;
       options.shadowGenerator?.addShadowCaster(mesh);
       protectedMeshes.push(mesh);

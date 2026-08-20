@@ -192,7 +192,7 @@ export class CombatSystem implements MatchCombatPort {
     return { damageApplied: true, eliminated };
   }
 
-  public damagePlayer(damage: number): boolean {
+  public damageTarget(damage: number): boolean {
     const now = performance.now();
 
     if (
@@ -214,7 +214,7 @@ export class CombatSystem implements MatchCombatPort {
     return this.botState.alive;
   }
 
-  public get isPlayerAlive(): boolean {
+  public get hasLivingTarget(): boolean {
     return this.playerState.alive;
   }
 
@@ -665,6 +665,11 @@ export class CombatSystem implements MatchCombatPort {
   private clearArmorPickup(): void {
     this.armorPickup?.view.dispose();
     this.armorPickup = null;
+  }
+
+  /** Legacy 1v1 bots keep their original unlimited-ammunition behavior. */
+  public consumeBotAmmo(): boolean {
+    return true;
   }
 
   private selectSafestSpawn(

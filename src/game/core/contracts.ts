@@ -58,8 +58,9 @@ export interface MatchCombatPort {
 
 export interface BotCombatPort {
   readonly isBotAlive: boolean;
-  readonly isPlayerAlive: boolean;
-  damagePlayer(damage: number): boolean;
+  readonly hasLivingTarget: boolean;
+  consumeBotAmmo(): boolean;
+  damageTarget(damage: number): boolean;
   getBotPosition(): Vector3;
   getBotEyePosition(): Vector3;
   getBotMuzzlePosition(): Vector3;

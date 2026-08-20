@@ -301,15 +301,19 @@ export class MatchManager {
     this.hud.trainingNavigation.hidden = true;
     this.hud.returnToHubButton.hidden = true;
     this.hud.scorePanel.hidden = !this.botEnabled;
-    this.hud.botHealthCard.hidden = !this.botEnabled;
+    // Team matches reveal only the player's own health; the opposing team's
+    // individual health must not be exposed through the HUD.
+    this.hud.botHealthCard.hidden = !this.botEnabled || this.isTeamMatch;
     this.hud.eyebrow.textContent = this.hasMatchTimer
-      ? "Five-minute duel"
+      ? this.isTeamMatch ? "Five-minute 3v3 team duel" : "Five-minute duel"
       : "Free practice";
     this.hud.title.textContent = this.hasMatchTimer
-      ? "Ready for the match?"
+      ? this.isTeamMatch ? "Ready for 3v3 Foundry?" : "Ready for the match?"
       : "Ready for free practice?";
     this.hud.message.textContent = this.hasMatchTimer
-      ? "Score more eliminations than the bot before the clock reaches zero."
+      ? this.isTeamMatch
+        ? "Lead Blue Team with two allied bots against three Red bots. Friendly fire is disabled."
+        : "Score more eliminations than the bot before the clock reaches zero."
       : "Explore and test your equipment with no opponent or countdown.";
     this.hud.finalScore.hidden = true;
     this.hud.actionButton.textContent = this.hasMatchTimer
@@ -389,22 +393,32 @@ export class MatchManager {
   } {
     if (result === "player-win") {
       return {
-        title: "Player Wins",
-        message: "You finished the round with the most eliminations.",
+        title: this.isTeamMatch ? "Blue Team Wins" : "Player Wins",
+        message: this.isTeamMatch
+          ? "Blue Team finished the round with the most eliminations."
+          : "You finished the round with the most eliminations.",
       };
     }
 
     if (result === "bot-win") {
       return {
-        title: "Bot Wins",
-        message: "The bot finished the round with the most eliminations.",
+        title: this.isTeamMatch ? "Red Team Wins" : "Bot Wins",
+        message: this.isTeamMatch
+          ? "Red Team finished the round with the most eliminations."
+          : "The bot finished the round with the most eliminations.",
       };
     }
 
     return {
       title: "Draw",
-      message: "Both combatants finished with the same number of eliminations.",
+      message: this.isTeamMatch
+        ? "Blue and Red finished with the same number of eliminations."
+        : "Both combatants finished with the same number of eliminations.",
     };
+  }
+
+  private get isTeamMatch(): boolean {
+    return this.selectedMapId === "foundry";
   }
 
   private updateScoreHud(): void {

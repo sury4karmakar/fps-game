@@ -65,13 +65,11 @@ const matchHud: MatchHudElements = {
   finalBotScore: requireElement<HTMLElement>("#match-final-bot-score"),
   actionButton: requireElement<HTMLButtonElement>("#match-action-button"),
   difficulty: requireElement<HTMLElement>("#match-difficulty"),
-  // The selector bindings stay dormant while their markup is commented out.
-  // Re-add these fields when the two controls are restored in index.html.
-  // difficultySelect: requireElement<HTMLSelectElement>("#match-difficulty-select"),
+  difficultySelect: requireElement<HTMLSelectElement>("#match-difficulty-select"),
   map: requireElement<HTMLElement>("#match-map"),
-  // mapSelect: requireElement<HTMLSelectElement>("#match-map-select"),
-  // mapDescription: requireElement<HTMLElement>("#match-map-description"),
-  // mapStatus: requireElement<HTMLElement>("#match-map-status"),
+  mapSelect: requireElement<HTMLSelectElement>("#match-map-select"),
+  mapDescription: requireElement<HTMLElement>("#match-map-description"),
+  mapStatus: requireElement<HTMLElement>("#match-map-status"),
   loadingStatus: requireElement<HTMLElement>("#match-loading-status"),
   exitMapButton: requireElement<HTMLButtonElement>("#exit-map-button"),
   trainingNavigation: requireElement<HTMLElement>("#training-navigation"),

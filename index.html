@@ -30,11 +30,11 @@
         </section>
 
         <section id="score-panel" aria-label="Elimination score">
-          <span class="score-side player-score-side">Player</span>
+          <span class="score-side player-score-side">Blue</span>
           <strong id="player-score">0</strong>
           <span class="score-divider">:</span>
           <strong id="bot-score">0</strong>
-          <span class="score-side bot-score-side">Bot</span>
+          <span class="score-side bot-score-side">Red</span>
         </section>
 
         <section id="combat-health-hud" aria-label="Combat health">
@@ -61,7 +61,7 @@
 
           <div class="health-card bot-health-card">
             <div class="health-heading">
-              <span class="health-name"><i aria-hidden="true"></i>Bot</span>
+              <span class="health-name"><i aria-hidden="true"></i>Red lead</span>
               <strong id="bot-health">100</strong>
             </div>
             <div class="health-track" aria-hidden="true">
@@ -124,7 +124,7 @@
             </div>
           </section> -->
 
-          <!-- <label class="difficulty-select start-only" for="match-difficulty-select">
+          <label class="difficulty-select start-only" for="match-difficulty-select">
             <span>Bot difficulty</span>
             <select id="match-difficulty-select" name="match-difficulty">
               <option value="easy">Easy</option>
@@ -138,7 +138,7 @@
             <select id="match-map-select" name="match-map" aria-describedby="match-map-description match-map-status"></select>
             <span id="match-map-description" class="map-description">Loading map details…</span>
             <span id="match-map-status" class="visually-hidden" role="status" aria-live="polite"></span>
-          </label> -->
+          </label>
 
           <section class="settings-panel start-only" aria-label="Game settings">
             <h3>Settings</h3>
@@ -184,12 +184,12 @@
 
           <section id="match-final-score" class="final-score" aria-label="Final score" hidden>
             <div class="final-score-side player-final-score">
-              <span>Player</span>
+              <span>Blue</span>
               <strong id="match-final-player-score">0</strong>
             </div>
             <span class="final-score-divider">:</span>
             <div class="final-score-side bot-final-score">
-              <span>Bot</span>
+              <span>Red</span>
               <strong id="match-final-bot-score">0</strong>
             </div>
           </section>

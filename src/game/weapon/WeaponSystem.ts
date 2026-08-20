@@ -606,7 +606,9 @@ export class WeaponSystem implements WeaponControlPort, TrainingWeaponControlPor
     }
 
     const metadata = mesh.metadata as { combatantId?: string } | null;
-    return metadata?.combatantId === "bot" || this.isInteractionTarget(mesh);
+    // Maps may register several combatants (for example Foundry's 3v3 teams).
+    // The combat system decides whether the hit is hostile or friendly.
+    return typeof metadata?.combatantId === "string" || this.isInteractionTarget(mesh);
   };
 
   private updateHud(): void {

@@ -162,7 +162,7 @@ export const ARENA_MAP_DEFINITIONS: Readonly<
     id: "foundry",
     displayName: "Foundry",
     description:
-      "An industrial arena with a furnace ring, service lanes, and a raised loading dock.",
+      "A 3v3 industrial team arena with a furnace ring, service lanes, and a raised loading dock.",
     availability: "available",
     hasBot: true,
     hasArmorPickups: true,

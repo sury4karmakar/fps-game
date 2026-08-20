@@ -113,10 +113,11 @@ export class BotAI implements BotControlPort {
   private stuckForSeconds = 0;
   private recoveryUntil = 0;
   private readonly recoveryDirection = Vector3.Zero();
+  private readonly getTargetPosition: () => Vector3;
 
   public constructor(
     private readonly scene: Scene,
-    private readonly playerController: PlayerControlPort,
+    targetSource: PlayerControlPort | (() => Vector3),
     private readonly combatSystem: BotCombatPort,
     private readonly patrolPoints: readonly Vector3[],
     private readonly navigationPoints: readonly Vector3[],
@@ -137,6 +138,9 @@ export class BotAI implements BotControlPort {
     }
 
     this.difficulty = getBotDifficultyDefinition(difficultyId);
+    this.getTargetPosition = typeof targetSource === "function"
+      ? targetSource
+      : () => targetSource.camera.position;
     this.arenaCollisionMeshes = new Set(collidableMeshes);
     this.attackBehavior = attackBehavior ?? new HitscanBotAttackBehavior(
       scene,
@@ -218,14 +222,14 @@ export class BotAI implements BotControlPort {
       this.wasBotAlive = true;
     }
 
-    if (!this.combatSystem.isPlayerAlive) {
+    if (!this.combatSystem.hasLivingTarget) {
       this.hadVisualContact = false;
       this.state = "patrol";
       this.updatePatrol(now, deltaSeconds);
       return;
     }
 
-    const playerPosition = this.playerController.camera.position;
+    const playerPosition = this.getTargetPosition();
     const botPosition = this.combatSystem.getBotPosition();
     const distanceToPlayer = Vector3.Distance(botPosition, playerPosition);
     const canSeePlayer = this.canDetectPlayer(playerPosition, distanceToPlayer);
